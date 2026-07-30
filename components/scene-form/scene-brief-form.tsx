@@ -1,0 +1,377 @@
+"use client";
+
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Clapperboard, Loader2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { toast } from "sonner";
+
+import { DemoPrefillChips } from "@/components/scene-form/demo-prefill-chips";
+import { FormSummaryRail } from "@/components/scene-form/form-summary-rail";
+import {
+  OptionCardGroup,
+  type OptionCard,
+} from "@/components/scene-form/option-card-group";
+import { SectionHeading } from "@/components/shared/section-heading";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { CREATIVE_DIRECTORIES } from "@/data/directories";
+import { DEMO_BRIEF_BY_SLUG, type DemoBrief } from "@/data/demo-projects";
+import {
+  ASPECT_HINTS,
+  ASPECT_LABELS,
+  ASPECT_RATIO_LIST,
+  DEFAULT_SCENE_BRIEF,
+  DESCRIPTION_LIMIT,
+  DIRECTORY_ID_LIST,
+  DURATION_HINTS,
+  DURATION_LABELS,
+  PURPOSE_HINTS,
+  PURPOSE_LABELS,
+  SCENE_DURATION_LIST,
+  SCENE_PURPOSE_LIST,
+} from "@/lib/constants";
+import { generateDirection } from "@/lib/director";
+import { sceneFormSchema } from "@/lib/schemas";
+import { readPreferences, writeDraft, writePreferences } from "@/lib/storage";
+import type {
+  AspectRatio,
+  DirectoryId,
+  SceneBrief,
+  SceneDuration,
+  ScenePurpose,
+} from "@/types";
+import { cn } from "@/lib/utils";
+
+/** Aspect previews are drawn, not imported. */
+function AspectFrame({ ratio }: { ratio: AspectRatio }) {
+  const size =
+    ratio === "9:16" ? "h-7 w-4" : ratio === "16:9" ? "h-4 w-7" : "size-5";
+  return (
+    <span
+      aria-hidden
+      className={cn("block rounded-[3px] border border-current opacity-60", size)}
+    />
+  );
+}
+
+const directoryOptions: OptionCard<DirectoryId>[] = CREATIVE_DIRECTORIES.map(
+  (directory) => ({
+    value: directory.id,
+    label: directory.name,
+    hint: directory.tagline,
+  }),
+);
+
+const purposeOptions: OptionCard<ScenePurpose>[] = SCENE_PURPOSE_LIST.map((purpose) => ({
+  value: purpose,
+  label: PURPOSE_LABELS[purpose],
+  hint: PURPOSE_HINTS[purpose],
+}));
+
+const durationOptions: OptionCard<`${SceneDuration}`>[] = SCENE_DURATION_LIST.map(
+  (duration) => ({
+    value: `${duration}` as `${SceneDuration}`,
+    label: DURATION_LABELS[duration],
+    hint: DURATION_HINTS[duration],
+  }),
+);
+
+const aspectOptions: OptionCard<AspectRatio>[] = ASPECT_RATIO_LIST.map((ratio) => ({
+  value: ratio,
+  label: ASPECT_LABELS[ratio],
+  hint: ASPECT_HINTS[ratio],
+  visual: <AspectFrame ratio={ratio} />,
+}));
+
+function isDirectoryId(value: string | null): value is DirectoryId {
+  return value !== null && DIRECTORY_ID_LIST.includes(value as DirectoryId);
+}
+
+export function SceneBriefForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // The demo in play is either the one in the URL or the last chip clicked, so
+  // it is derived rather than synchronised in an effect.
+  const [clickedDemo, setClickedDemo] = useState<string | undefined>(undefined);
+  const [isDirecting, setIsDirecting] = useState(false);
+  const appliedParams = useRef(false);
+  const activeDemo = clickedDemo ?? searchParams.get("demo") ?? undefined;
+
+  const form = useForm<SceneBrief>({
+    resolver: zodResolver(sceneFormSchema),
+    defaultValues: DEFAULT_SCENE_BRIEF,
+    mode: "onSubmit",
+  });
+
+  // `useWatch` is the subscription-based API, so it stays compiler-friendly.
+  // It reports a partial snapshot, so defaults fill any field not yet touched.
+  const watched = useWatch({ control: form.control });
+  const values: SceneBrief = { ...DEFAULT_SCENE_BRIEF, ...watched };
+
+  // Apply ?demo= and ?direction= once, and otherwise fall back to the last
+  // direction the user worked in.
+  useEffect(() => {
+    if (appliedParams.current) {
+      return;
+    }
+    appliedParams.current = true;
+
+    const demoSlug = searchParams.get("demo");
+    const demo = demoSlug ? DEMO_BRIEF_BY_SLUG[demoSlug] : undefined;
+    if (demo) {
+      form.reset(demo.brief);
+      return;
+    }
+
+    const direction = searchParams.get("direction");
+    if (isDirectoryId(direction)) {
+      form.setValue("directoryId", direction);
+      return;
+    }
+
+    const preferences = readPreferences();
+    if (preferences.lastDirectoryId) {
+      form.setValue("directoryId", preferences.lastDirectoryId);
+    }
+    if (preferences.lastAspectRatio) {
+      form.setValue("aspectRatio", preferences.lastAspectRatio);
+    }
+    if (preferences.lastDuration) {
+      form.setValue("duration", preferences.lastDuration);
+    }
+  }, [form, searchParams]);
+
+  function applyDemo(demo: DemoBrief) {
+    form.reset(demo.brief);
+    setClickedDemo(demo.slug);
+    toast.success(`Loaded the ${demo.label.toLowerCase()} brief.`);
+  }
+
+  function onSubmit(brief: SceneBrief) {
+    setIsDirecting(true);
+    try {
+      const output = generateDirection(brief, { now: new Date().toISOString() });
+      const write = writeDraft(brief, output, new Date().toISOString());
+
+      writePreferences({
+        lastDirectoryId: brief.directoryId,
+        lastAspectRatio: brief.aspectRatio,
+        lastDuration: brief.duration,
+      });
+
+      if (write.status === "failed") {
+        setIsDirecting(false);
+        toast.error(
+          write.reason === "quota"
+            ? "Browser storage is full. Clear some space and try again."
+            : "This browser blocked local storage, so the plan could not be kept.",
+        );
+        return;
+      }
+
+      router.push("/workspace");
+    } catch {
+      setIsDirecting(false);
+      toast.error("Something went wrong while directing this scene.");
+    }
+  }
+
+  const descriptionValue = values.description ?? "";
+  const descriptionError = form.formState.errors.description?.message;
+
+  return (
+    <div className="mx-auto w-full max-w-[88rem] px-5 py-12 sm:px-8">
+      <SectionHeading
+        as="h1"
+        eyebrow="Scene brief"
+        title="Tell FramePilot what happens"
+        description="Two sentences and four choices is enough. The more physical detail you give, the more specific the direction gets."
+      />
+
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        noValidate
+        className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12"
+      >
+        <div className="space-y-10">
+          <DemoPrefillChips onSelect={applyDemo} activeSlug={activeDemo} />
+
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-4">
+              <Label htmlFor="description" className="text-sm font-medium text-ink">
+                Scene description <span className="text-signal-danger">*</span>
+              </Label>
+              <span
+                className={cn(
+                  "font-mono text-[0.7rem]",
+                  descriptionValue.length > DESCRIPTION_LIMIT
+                    ? "text-signal-danger"
+                    : "text-ink-faint",
+                )}
+              >
+                {descriptionValue.length}/{DESCRIPTION_LIMIT}
+              </span>
+            </div>
+            <Textarea
+              id="description"
+              rows={6}
+              placeholder="A small cafe on the first afternoon of the monsoon. Rain streaks the window, steam lifts off a fresh cup, and the room glows warm against the grey street."
+              aria-describedby={
+                descriptionError ? "description-error" : "description-hint"
+              }
+              aria-invalid={descriptionError ? true : undefined}
+              className="resize-y border-hairline-strong bg-surface/60 text-sm leading-relaxed"
+              {...form.register("description")}
+            />
+            {descriptionError ? (
+              <p id="description-error" role="alert" className="text-xs text-signal-danger">
+                {descriptionError}
+              </p>
+            ) : (
+              <p id="description-hint" className="text-xs text-ink-faint">
+                Name the place, the light, and one thing that physically moves.
+              </p>
+            )}
+          </div>
+
+          <OptionCardGroup
+            name="directoryId"
+            legend="Creative direction *"
+            description="Each direction changes the shot structure, not just the wording."
+            options={directoryOptions}
+            value={values.directoryId}
+            onChange={(next) => form.setValue("directoryId", next, { shouldDirty: true })}
+            columns={2}
+            error={form.formState.errors.directoryId?.message}
+          />
+
+          <OptionCardGroup
+            name="purpose"
+            legend="Purpose"
+            options={purposeOptions}
+            value={values.purpose}
+            onChange={(next) => form.setValue("purpose", next, { shouldDirty: true })}
+            columns={2}
+            error={form.formState.errors.purpose?.message}
+          />
+
+          <div className="grid gap-8 sm:grid-cols-2">
+            <OptionCardGroup
+              name="duration"
+              legend="Runtime"
+              options={durationOptions}
+              value={`${values.duration}` as `${SceneDuration}`}
+              onChange={(next) =>
+                form.setValue("duration", Number(next) as SceneDuration, {
+                  shouldDirty: true,
+                })
+              }
+              columns={3}
+              error={form.formState.errors.duration?.message}
+            />
+
+            <OptionCardGroup
+              name="aspectRatio"
+              legend="Aspect ratio"
+              options={aspectOptions}
+              value={values.aspectRatio}
+              onChange={(next) => form.setValue("aspectRatio", next, { shouldDirty: true })}
+              columns={3}
+              error={form.formState.errors.aspectRatio?.message}
+            />
+          </div>
+
+          <div className="space-y-5 rounded-lg border border-hairline bg-surface/40 p-5">
+            <div>
+              <h2 className="text-sm font-medium text-ink">Optional detail</h2>
+              <p className="mt-1 text-xs text-ink-muted">
+                Each field you fill in raises the readiness score and tightens the direction.
+              </p>
+            </div>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="primarySubject" className="text-sm text-ink">
+                  Primary subject
+                </Label>
+                <Input
+                  id="primarySubject"
+                  placeholder="hand-brewed monsoon coffee"
+                  className="border-hairline-strong bg-surface/60"
+                  aria-invalid={form.formState.errors.primarySubject ? true : undefined}
+                  {...form.register("primarySubject")}
+                />
+                {form.formState.errors.primarySubject ? (
+                  <p role="alert" className="text-xs text-signal-danger">
+                    {form.formState.errors.primarySubject.message}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="targetAudience" className="text-sm text-ink">
+                  Target audience
+                </Label>
+                <Input
+                  id="targetAudience"
+                  placeholder="students and young professionals"
+                  className="border-hairline-strong bg-surface/60"
+                  aria-invalid={form.formState.errors.targetAudience ? true : undefined}
+                  {...form.register("targetAudience")}
+                />
+                {form.formState.errors.targetAudience ? (
+                  <p role="alert" className="text-xs text-signal-danger">
+                    {form.formState.errors.targetAudience.message}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="onScreenText" className="text-sm text-ink">
+                On-screen text
+              </Label>
+              <Input
+                id="onScreenText"
+                placeholder="Monsoon pour, all week"
+                className="border-hairline-strong bg-surface/60"
+                aria-describedby="onScreenText-hint"
+                aria-invalid={form.formState.errors.onScreenText ? true : undefined}
+                {...form.register("onScreenText")}
+              />
+              {form.formState.errors.onScreenText ? (
+                <p role="alert" className="text-xs text-signal-danger">
+                  {form.formState.errors.onScreenText.message}
+                </p>
+              ) : (
+                <p id="onScreenText-hint" className="text-xs text-ink-faint">
+                  Eight words or fewer survives a phone screen.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-hairline pt-6">
+            <Button type="submit" size="lg" disabled={isDirecting}>
+              {isDirecting ? (
+                <Loader2 aria-hidden className="size-4 animate-spin" />
+              ) : (
+                <Clapperboard aria-hidden className="size-4" />
+              )}
+              {isDirecting ? "Directing…" : "Direct my scene"}
+            </Button>
+            <p className="text-xs text-ink-faint">
+              Runs locally. Nothing is sent anywhere.
+            </p>
+          </div>
+        </div>
+
+        <FormSummaryRail brief={values} />
+      </form>
+    </div>
+  );
+}

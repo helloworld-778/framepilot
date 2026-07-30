@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — never commit real values, but keep the documented template
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local editor settings
+/.vscode
+/.idea
+*.code-workspace
+
+# local logs and verification artifacts
+*.log
+
+# plans downloaded from the app during a demo
+framepilot-*.json

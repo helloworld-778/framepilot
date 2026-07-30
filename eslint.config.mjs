@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated output that is not ours to lint.
+    "coverage/**",
   ]),
 ]);
 

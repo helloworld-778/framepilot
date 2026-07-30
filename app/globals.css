@@ -1,26 +1,218 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
+/*
+  FramePilot design tokens — dark editorial, single theme.
+  Raw palette first, then the semantic contract the UI primitives consume.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Raw palette */
+  --fp-canvas: #0b0b0f;
+  --fp-surface: #12131a;
+  --fp-surface-raised: #191b24;
+  --fp-surface-sunken: #0e0f15;
+  --fp-ink: #f4f1ea;
+  /* Secondary text sits at ~8.4:1 on canvas, tertiary at ~5.8:1 on surface. */
+  --fp-ink-muted: #b4b0a6;
+  --fp-ink-faint: #93908a;
+  --fp-accent: #7c6cf0;
+  --fp-accent-soft: #a99bff;
+  --fp-accent-deep: #5b62e8;
+  --fp-highlight: #e8b562;
+  --fp-hairline: #262833;
+  --fp-hairline-strong: #333648;
+  --fp-danger: #e5484d;
+  --fp-success: #57b894;
+  --fp-warning: #e0a458;
+
+  /* Semantic contract used by components/ui/* */
+  --radius: 0.625rem;
+  --background: var(--fp-canvas);
+  --foreground: var(--fp-ink);
+  --card: var(--fp-surface);
+  --card-foreground: var(--fp-ink);
+  --popover: var(--fp-surface-raised);
+  --popover-foreground: var(--fp-ink);
+  --primary: var(--fp-accent);
+  --primary-foreground: #0a0912;
+  --secondary: var(--fp-surface-raised);
+  --secondary-foreground: var(--fp-ink);
+  --muted: #16171f;
+  --muted-foreground: var(--fp-ink-muted);
+  --accent: #1e2029;
+  --accent-foreground: var(--fp-ink);
+  --destructive: var(--fp-danger);
+  --destructive-foreground: #140607;
+  --border: var(--fp-hairline);
+  --input: #2a2c38;
+  --ring: #8f82f5;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-canvas: var(--fp-canvas);
+  --color-surface: var(--fp-surface);
+  --color-surface-raised: var(--fp-surface-raised);
+  --color-surface-sunken: var(--fp-surface-sunken);
+  --color-ink: var(--fp-ink);
+  --color-ink-muted: var(--fp-ink-muted);
+  --color-ink-faint: var(--fp-ink-faint);
+  --color-brand: var(--fp-accent);
+  --color-brand-soft: var(--fp-accent-soft);
+  --color-brand-deep: var(--fp-accent-deep);
+  --color-highlight: var(--fp-highlight);
+  --color-hairline: var(--fp-hairline);
+  --color-hairline-strong: var(--fp-hairline-strong);
+  --color-signal-success: var(--fp-success);
+  --color-signal-warning: var(--fp-warning);
+  --color-signal-danger: var(--fp-danger);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --tracking-editorial: -0.02em;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--fp-accent) 40%, transparent);
+    color: var(--fp-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: var(--tracking-editorial);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /*
+    Cinematic backdrop, built entirely in CSS.
+    Two low-opacity radial pools plus a fine diagonal weave — no imagery.
+  */
+  .fp-atmosphere {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        60rem 32rem at 12% -8%,
+        color-mix(in oklab, var(--fp-accent) 22%, transparent),
+        transparent 62%
+      ),
+      radial-gradient(
+        44rem 26rem at 92% 4%,
+        color-mix(in oklab, var(--fp-accent-deep) 16%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        34rem 22rem at 68% 96%,
+        color-mix(in oklab, var(--fp-highlight) 8%, transparent),
+        transparent 66%
+      );
+  }
+
+  .fp-grid-weave {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, var(--fp-hairline) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--fp-hairline) 1px, transparent 1px);
+    background-size: 6rem 6rem;
+    mask-image: radial-gradient(70% 55% at 50% 0%, #000 20%, transparent 78%);
+    opacity: 0.5;
+  }
+
+  .fp-filmstrip {
+    background-image: repeating-linear-gradient(
+      to right,
+      var(--fp-hairline) 0 1px,
+      transparent 1px 0.75rem
+    );
+  }
+
+  /* Hairline top edge that reads as a light leak on panels. */
+  .fp-edge-light {
+    position: relative;
+  }
+
+  .fp-edge-light::before {
+    content: "";
+    position: absolute;
+    inset-inline: 1.5rem;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklab, var(--fp-accent-soft) 55%, transparent),
+      transparent
+    );
+  }
+}
+
+/* Honour the OS reduced-motion preference everywhere, including Framer Motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
