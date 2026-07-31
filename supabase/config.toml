@@ -1,0 +1,69 @@
+# Supabase CLI configuration — FramePilot v2 foundation.
+#
+# This file is version-controlled scaffolding only. No Supabase project has been
+# created or linked, and `project_id` below is a local identifier, not a remote
+# project ref. Running `supabase link` later will record the real ref in
+# `supabase/.temp/`, which is git-ignored.
+#
+# See docs/v2-architecture.md for the exact (unexecuted) link/apply commands.
+
+project_id = "framepilot"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+# Caps accidental unbounded reads from the auto-generated REST API.
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+# Migrations are the single source of truth for schema. Applied in filename order.
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+# Local mail catcher. Off: no auth email flow exists in Phase 1.
+enabled = false
+
+[storage]
+# Deliberately disabled. Phase 1 stores reference *metadata* only — no bucket,
+# no upload path, no extraction pipeline.
+enabled = false
+
+[auth]
+# Enabled locally so `auth.users` exists for the foreign keys the schema declares.
+# No sign-in UI, provider, or session handling ships in Phase 1.
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["http://127.0.0.1:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+# Signup stays available locally for future testing; it grants no admin rights.
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# Confirmations off locally only, so a future Phase 2 test user needs no mailbox.
+enable_confirmations = false
+double_confirm_changes = true
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+
+[analytics]
+enabled = false
+
+[edge_runtime]
+# No Edge Functions exist. The Gemini integration is a later, separate phase.
+enabled = false

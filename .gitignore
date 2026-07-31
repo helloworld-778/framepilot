@@ -37,6 +37,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase CLI local state — config and migrations ARE version-controlled
+supabase/.branches
+supabase/.temp
+supabase/.env
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
