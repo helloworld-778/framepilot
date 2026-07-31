@@ -59,7 +59,10 @@ export function ProjectCard({ project, onRename, onDelete }: ProjectCardProps) {
 
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-base font-medium leading-snug text-ink">
+          {/* Titles run to the rename limit and may contain one unbroken run of
+              characters, so the heading wraps instead of clipping or scrolling.
+              Nothing is truncated: the whole title stays readable. */}
+          <h3 className="min-w-0 flex-1 text-base font-medium leading-snug text-ink break-words [overflow-wrap:anywhere]">
             <Link
               href={`/projects/${project.id}`}
               className="rounded-sm transition-colors hover:text-dir-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"

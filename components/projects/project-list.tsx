@@ -114,17 +114,25 @@ export function ProjectList() {
           </Button>
         </div>
       ) : (
-        <ul className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {projects.map((project) => (
-            <li key={project.id} className="flex">
-              <ProjectCard
-                project={project}
-                onRename={handleRename}
-                onDelete={handleDelete}
-              />
-            </li>
-          ))}
-        </ul>
+        // The h1 above already carries the visible count, so the collection gets
+        // a screen-reader-only h2 rather than a second large heading. That keeps
+        // the card titles at h3 without skipping a level.
+        <section aria-labelledby="saved-projects-heading">
+          <h2 id="saved-projects-heading" className="sr-only">
+            Saved projects
+          </h2>
+          <ul className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {projects.map((project) => (
+              <li key={project.id} className="flex min-w-0">
+                <ProjectCard
+                  project={project}
+                  onRename={handleRename}
+                  onDelete={handleDelete}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );
