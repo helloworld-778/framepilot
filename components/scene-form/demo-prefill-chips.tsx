@@ -13,11 +13,14 @@ export function DemoPrefillChips({
   activeSlug?: string;
 }) {
   return (
-    <div className="rounded-lg border border-hairline bg-surface/40 p-4">
-      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-ink-faint">
-        <Sparkles aria-hidden className="size-3.5 text-brand-soft" />
-        Start from a demo brief
-      </p>
+    <div className="fp-panel p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-[0.68rem] font-medium uppercase tracking-slate text-ink-muted">
+          <Sparkles aria-hidden className="size-3.5 text-brand-soft" />
+          Start from a demo brief
+        </p>
+        <span aria-hidden className="fp-perf hidden h-1.5 flex-1 opacity-60 sm:block" />
+      </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {DEMO_BRIEFS.map((demo) => (
           <Button

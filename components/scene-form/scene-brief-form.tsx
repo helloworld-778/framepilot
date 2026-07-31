@@ -1,20 +1,33 @@
-"use client";
+﻿"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Clapperboard, Loader2 } from "lucide-react";
+import {
+  BookOpen,
+  CalendarClock,
+  Clapperboard,
+  Megaphone,
+  Radio,
+  Timer,
+  type LucideIcon,
+} from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { DemoPrefillChips } from "@/components/scene-form/demo-prefill-chips";
-import { FormSummaryRail } from "@/components/scene-form/form-summary-rail";
+import { LiveMoodboard } from "@/components/scene-form/live-moodboard";
 import {
   OptionCardGroup,
   type OptionCard,
 } from "@/components/scene-form/option-card-group";
+import { ProgressRail } from "@/components/scene-form/progress-rail";
+import {
+  ActionFeedbackButton,
+  type ActionState,
+} from "@/components/shared/action-feedback-button";
+import { MagneticCta } from "@/components/shared/magnetic-cta";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +48,7 @@ import {
   SCENE_PURPOSE_LIST,
 } from "@/lib/constants";
 import { generateDirection } from "@/lib/director";
+import { directionAttr, directoryTheme } from "@/lib/directory-theme";
 import { sceneFormSchema } from "@/lib/schemas";
 import { readPreferences, writeDraft, writePreferences } from "@/lib/storage";
 import type {
@@ -63,13 +77,24 @@ const directoryOptions: OptionCard<DirectoryId>[] = CREATIVE_DIRECTORIES.map(
     value: directory.id,
     label: directory.name,
     hint: directory.tagline,
+    directionId: directory.id,
+    swatches: directory.palette,
+    meta: directoryTheme(directory.id).label,
   }),
 );
+
+const PURPOSE_ICONS: Record<ScenePurpose, LucideIcon> = {
+  promotion: Megaphone,
+  invitation: CalendarClock,
+  awareness: Radio,
+  "short-story": BookOpen,
+};
 
 const purposeOptions: OptionCard<ScenePurpose>[] = SCENE_PURPOSE_LIST.map((purpose) => ({
   value: purpose,
   label: PURPOSE_LABELS[purpose],
   hint: PURPOSE_HINTS[purpose],
+  icon: PURPOSE_ICONS[purpose],
 }));
 
 const durationOptions: OptionCard<`${SceneDuration}`>[] = SCENE_DURATION_LIST.map(
@@ -77,6 +102,7 @@ const durationOptions: OptionCard<`${SceneDuration}`>[] = SCENE_DURATION_LIST.ma
     value: `${duration}` as `${SceneDuration}`,
     label: DURATION_LABELS[duration],
     hint: DURATION_HINTS[duration],
+    icon: Timer,
   }),
 );
 
@@ -97,7 +123,7 @@ export function SceneBriefForm() {
   // The demo in play is either the one in the URL or the last chip clicked, so
   // it is derived rather than synchronised in an effect.
   const [clickedDemo, setClickedDemo] = useState<string | undefined>(undefined);
-  const [isDirecting, setIsDirecting] = useState(false);
+  const [submitState, setSubmitState] = useState<ActionState>("idle");
   const appliedParams = useRef(false);
   const activeDemo = clickedDemo ?? searchParams.get("demo") ?? undefined;
 
@@ -152,7 +178,7 @@ export function SceneBriefForm() {
   }
 
   function onSubmit(brief: SceneBrief) {
-    setIsDirecting(true);
+    setSubmitState("working");
     try {
       const output = generateDirection(brief, { now: new Date().toISOString() });
       const write = writeDraft(brief, output, new Date().toISOString());
@@ -164,7 +190,7 @@ export function SceneBriefForm() {
       });
 
       if (write.status === "failed") {
-        setIsDirecting(false);
+        setSubmitState("error");
         toast.error(
           write.reason === "quota"
             ? "Browser storage is full. Clear some space and try again."
@@ -173,9 +199,11 @@ export function SceneBriefForm() {
         return;
       }
 
+      // Stays in the working state through the navigation, so the control never
+      // claims success before the workspace actually opens.
       router.push("/workspace");
     } catch {
-      setIsDirecting(false);
+      setSubmitState("error");
       toast.error("Something went wrong while directing this scene.");
     }
   }
@@ -184,7 +212,12 @@ export function SceneBriefForm() {
   const descriptionError = form.formState.errors.description?.message;
 
   return (
-    <div className="mx-auto w-full max-w-[88rem] px-5 py-12 sm:px-8">
+    <div
+      {...directionAttr(values.directoryId)}
+      className="relative mx-auto w-full max-w-[88rem] px-5 py-12 sm:px-8"
+    >
+      <ProgressRail current="brief" />
+
       <SectionHeading
         as="h1"
         eyebrow="Scene brief"
@@ -200,7 +233,7 @@ export function SceneBriefForm() {
         <div className="space-y-10">
           <DemoPrefillChips onSelect={applyDemo} activeSlug={activeDemo} />
 
-          <div className="space-y-2">
+          <div className="fp-panel space-y-2 p-5">
             <div className="flex items-baseline justify-between gap-4">
               <Label htmlFor="description" className="text-sm font-medium text-ink">
                 Scene description <span className="text-signal-danger">*</span>
@@ -224,7 +257,7 @@ export function SceneBriefForm() {
                 descriptionError ? "description-error" : "description-hint"
               }
               aria-invalid={descriptionError ? true : undefined}
-              className="resize-y border-hairline-strong bg-surface/60 text-sm leading-relaxed"
+              className="resize-y border-hairline-strong bg-canvas-deep/60 text-sm leading-relaxed transition-[border-color,box-shadow] focus-visible:border-dir/60 focus-visible:ring-[3px] focus-visible:ring-dir/25"
               {...form.register("description")}
             />
             {descriptionError ? (
@@ -285,7 +318,7 @@ export function SceneBriefForm() {
             />
           </div>
 
-          <div className="space-y-5 rounded-lg border border-hairline bg-surface/40 p-5">
+          <div className="fp-panel space-y-5 p-5">
             <div>
               <h2 className="text-sm font-medium text-ink">Optional detail</h2>
               <p className="mt-1 text-xs text-ink-muted">
@@ -301,7 +334,7 @@ export function SceneBriefForm() {
                 <Input
                   id="primarySubject"
                   placeholder="hand-brewed monsoon coffee"
-                  className="border-hairline-strong bg-surface/60"
+                  className="border-hairline-strong bg-canvas-deep/60 transition-[border-color,box-shadow] focus-visible:border-dir/60 focus-visible:ring-[3px] focus-visible:ring-dir/25"
                   aria-invalid={form.formState.errors.primarySubject ? true : undefined}
                   {...form.register("primarySubject")}
                 />
@@ -319,7 +352,7 @@ export function SceneBriefForm() {
                 <Input
                   id="targetAudience"
                   placeholder="students and young professionals"
-                  className="border-hairline-strong bg-surface/60"
+                  className="border-hairline-strong bg-canvas-deep/60 transition-[border-color,box-shadow] focus-visible:border-dir/60 focus-visible:ring-[3px] focus-visible:ring-dir/25"
                   aria-invalid={form.formState.errors.targetAudience ? true : undefined}
                   {...form.register("targetAudience")}
                 />
@@ -338,7 +371,7 @@ export function SceneBriefForm() {
               <Input
                 id="onScreenText"
                 placeholder="Monsoon pour, all week"
-                className="border-hairline-strong bg-surface/60"
+                className="border-hairline-strong bg-canvas-deep/60 transition-[border-color,box-shadow] focus-visible:border-dir/60 focus-visible:ring-[3px] focus-visible:ring-dir/25"
                 aria-describedby="onScreenText-hint"
                 aria-invalid={form.formState.errors.onScreenText ? true : undefined}
                 {...form.register("onScreenText")}
@@ -355,23 +388,29 @@ export function SceneBriefForm() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 border-t border-hairline pt-6">
-            <Button type="submit" size="lg" disabled={isDirecting}>
-              {isDirecting ? (
-                <Loader2 aria-hidden className="size-4 animate-spin" />
-              ) : (
-                <Clapperboard aria-hidden className="size-4" />
-              )}
-              {isDirecting ? "Directing…" : "Direct my scene"}
-            </Button>
+          <div className="fp-panel fp-panel-tinted flex flex-wrap items-center gap-3 p-5">
+            <MagneticCta>
+              <ActionFeedbackButton
+                type="submit"
+                idleLabel="Direct my scene"
+                workingLabel="Directing…"
+                successLabel="Directed"
+                icon={Clapperboard}
+                state={submitState}
+                variant="default"
+                size="lg"
+                announceSuccess="Scene directed. Opening the workspace."
+              />
+            </MagneticCta>
             <p className="text-xs text-ink-faint">
               Runs locally. Nothing is sent anywhere.
             </p>
           </div>
         </div>
 
-        <FormSummaryRail brief={values} />
+        <LiveMoodboard brief={values} />
       </form>
     </div>
   );
 }
+

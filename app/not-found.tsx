@@ -1,4 +1,4 @@
-import { ArrowRight, Compass } from "lucide-react";
+﻿import { ArrowRight, Compass } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 export default function NotFound() {
   return (
     <div className="mx-auto w-full max-w-3xl px-5 py-24 sm:px-8">
-      <div className="fp-edge-light rounded-lg border border-hairline bg-surface/60 p-8 text-center">
+      <div className="fp-panel fp-panel-tinted fp-edge-light relative overflow-hidden p-8 text-center">
         <span className="mx-auto mb-4 flex size-10 items-center justify-center rounded-md border border-hairline-strong bg-surface-raised text-ink-muted">
           <Compass aria-hidden className="size-4" />
         </span>
@@ -35,3 +35,4 @@ export default function NotFound() {
     </div>
   );
 }
+

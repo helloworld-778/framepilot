@@ -1,26 +1,26 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Copy } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import {
+  ActionFeedbackButton,
+  type ActionOutcome,
+} from "@/components/shared/action-feedback-button";
 
 interface CopyButtonProps {
   value: string;
   label: string;
-  /** Announced and shown after a successful copy. */
+  /** Shown on the button after a successful copy. */
   confirmation?: string;
   variant?: "default" | "outline" | "secondary" | "ghost";
   size?: "sm" | "default" | "lg";
   className?: string;
 }
 
-type CopyState = "idle" | "copied" | "error";
-
 /**
- * Clipboard writes need a user gesture and can fail on insecure origins, so the
- * failure path is visible rather than silent.
+ * Clipboard writes need a user gesture and can fail on insecure origins or when
+ * the permission is refused, so the failure is surfaced honestly rather than
+ * being swallowed.
  */
 export function CopyButton({
   value,
@@ -30,52 +30,29 @@ export function CopyButton({
   size = "sm",
   className,
 }: CopyButtonProps) {
-  const [state, setState] = useState<CopyState>("idle");
-  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeout.current) {
-        clearTimeout(timeout.current);
-      }
-    };
-  }, []);
-
-  async function handleCopy() {
+  async function copy(): Promise<ActionOutcome> {
     try {
       await navigator.clipboard.writeText(value);
-      setState("copied");
+      return { ok: true };
     } catch {
-      setState("error");
+      return { ok: false, message: "Copy failed" };
     }
-    if (timeout.current) {
-      clearTimeout(timeout.current);
-    }
-    timeout.current = setTimeout(() => setState("idle"), 2200);
   }
 
-  const text =
-    state === "copied" ? confirmation : state === "error" ? "Copy failed" : label;
-
   return (
-    <Button
-      type="button"
+    <ActionFeedbackButton
+      idleLabel={label}
+      workingLabel="Copying…"
+      successLabel={confirmation}
+      errorLabel="Copy failed"
+      onAction={copy}
+      icon={Copy}
       variant={variant}
       size={size}
-      onClick={handleCopy}
-      className={cn(state === "error" && "text-signal-danger", className)}
-      aria-label={label}
-    >
-      {state === "copied" ? (
-        <Check aria-hidden className="size-3.5" />
-      ) : (
-        <Copy aria-hidden className="size-3.5" />
-      )}
-      <span>{text}</span>
-      <span aria-live="polite" className="sr-only">
-        {state === "copied" ? `${label}: copied to clipboard` : ""}
-        {state === "error" ? `${label}: copy failed` : ""}
-      </span>
-    </Button>
+      className={className}
+      ariaLabel={label}
+      announceSuccess={`${label}: copied to clipboard`}
+      announceError={`${label}: copy failed`}
+    />
   );
 }

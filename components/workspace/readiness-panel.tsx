@@ -1,38 +1,85 @@
+"use client";
+
+import { animate, motion, useMotionValue, useTransform } from "framer-motion";
+import { useEffect } from "react";
+
 import { StatusPill } from "@/components/shared/status-pill";
 import { readinessBandFor } from "@/lib/constants";
+import { usePrefersReducedMotion } from "@/lib/use-reduced-motion";
 import type { DirectorOutput, ReadinessBand } from "@/types";
 import { cn } from "@/lib/utils";
 
 const TONE_COLOUR: Record<ReadinessBand["tone"], string> = {
   strong: "var(--fp-success)",
-  steady: "var(--fp-accent-soft)",
+  steady: "var(--dir-accent-soft)",
   caution: "var(--fp-warning)",
   weak: "var(--fp-danger)",
 };
 
-/** Score dial drawn with a conic gradient — no charting dependency. */
+/**
+ * Instrument-style dial: conic ring, tick marks, direction-aware glow. The score
+ * and the checks come straight from the rubric — nothing here changes them.
+ *
+ * The count and the ring are driven by a motion value rather than React state,
+ * so animating the number never triggers a re-render.
+ */
 function ScoreDial({ score, band }: { score: number; band: ReadinessBand }) {
+  const reducedMotion = usePrefersReducedMotion();
   const colour = TONE_COLOUR[band.tone];
+
+  const value = useMotionValue(score);
+  const rounded = useTransform(value, (current) => Math.round(current));
+  const ring = useTransform(
+    value,
+    (current) =>
+      `conic-gradient(${colour} ${current * 3.6}deg, color-mix(in oklab, var(--fp-hairline) 90%, transparent) ${current * 3.6}deg)`,
+  );
+
+  useEffect(() => {
+    const controls = animate(value, score, {
+      duration: reducedMotion ? 0 : 0.6,
+      ease: [0.22, 0.61, 0.36, 1],
+    });
+    return () => controls.stop();
+  }, [value, score, reducedMotion]);
+
   return (
     <div className="flex items-center gap-4">
-      <div
+      <motion.div
         role="img"
         aria-label={`Production readiness ${score} out of 100. ${band.label}.`}
-        className="relative grid size-20 shrink-0 place-items-center rounded-full"
+        className="relative grid size-24 shrink-0 place-items-center rounded-full"
         style={{
-          background: `conic-gradient(${colour} ${score * 3.6}deg, var(--fp-hairline) ${score * 3.6}deg)`,
+          background: ring,
+          boxShadow: `0 0 30px -12px ${colour}`,
         }}
       >
-        <span className="grid size-[4.1rem] place-items-center rounded-full bg-surface">
-          <span className="font-mono text-xl font-medium text-ink">{score}</span>
+        {/* Tick marks, drawn with a repeating conic gradient. */}
+        <span
+          aria-hidden
+          className="absolute inset-0 rounded-full opacity-45"
+          style={{
+            background:
+              "repeating-conic-gradient(from 0deg, rgb(0 0 0 / 0.75) 0deg 1.4deg, transparent 1.4deg 9deg)",
+            mask: "radial-gradient(circle, transparent 76%, #000 77%, #000 100%)",
+          }}
+        />
+        <span className="relative grid size-[4.9rem] place-items-center rounded-full bg-surface shadow-[inset_0_1px_0_0_rgb(255_255_255/0.05)]">
+          <motion.span className="font-mono text-2xl font-medium leading-none text-ink">
+            {rounded}
+          </motion.span>
+          <span className="mt-1 font-mono text-[0.55rem] uppercase tracking-slate text-ink-faint">
+            / 100
+          </span>
         </span>
-      </div>
-      <div>
+      </motion.div>
+
+      <div className="min-w-0">
         <p className="text-sm font-medium" style={{ color: colour }}>
           {band.label}
         </p>
-        <p className="mt-1 text-xs text-ink-faint">
-          {score} of 100 across eight production checks.
+        <p className="mt-1 text-xs leading-snug text-ink-muted">
+          Scored across eight production checks before handoff.
         </p>
       </div>
     </div>
@@ -45,22 +92,25 @@ export function ReadinessPanel({ output }: { output: DirectorOutput }) {
   return (
     <section
       aria-labelledby="readiness-heading"
-      className="rounded-lg border border-hairline bg-surface/60 p-5"
+      className="fp-panel fp-panel-tinted overflow-hidden"
     >
-      <h2
-        id="readiness-heading"
-        className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-ink-faint"
-      >
-        Production readiness
-      </h2>
+      <div className="flex items-center justify-between gap-3 border-b border-hairline px-5 py-3">
+        <h2
+          id="readiness-heading"
+          className="text-[0.7rem] font-medium uppercase tracking-slate text-ink-muted"
+        >
+          Production readiness
+        </h2>
+        <span className="fp-slate text-[0.6rem] uppercase">Instrument</span>
+      </div>
 
-      <div className="mt-4">
+      <div className="px-5 py-5">
         <ScoreDial score={output.readinessScore} band={band} />
       </div>
 
-      <ul className="mt-5 divide-y divide-hairline border-t border-hairline">
+      <ul className="divide-y divide-hairline border-t border-hairline">
         {output.readinessChecks.map((check) => (
-          <li key={check.id} className="py-3">
+          <li key={check.id} className="px-5 py-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[0.82rem] font-medium text-ink">{check.label}</p>

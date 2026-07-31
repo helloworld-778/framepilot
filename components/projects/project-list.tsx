@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { AlertTriangle, ArrowRight, FolderOpen } from "lucide-react";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
 import { ProjectCard } from "@/components/projects/project-card";
+import type { ActionOutcome } from "@/components/shared/action-feedback-button";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Button } from "@/components/ui/button";
 import { PROJECT_CAP, PROJECT_CAP_WARNING_AT } from "@/lib/constants";
@@ -29,31 +30,33 @@ export function ProjectList() {
 
   const projects = parsed.projects;
 
-  function handleRename(id: string, title: string) {
+  function handleRename(id: string, title: string): ActionOutcome {
     const result = renameProject(id, title, new Date().toISOString());
     if (result.status === "ok") {
       toast.success(`Renamed to “${title}”.`);
       setAnnouncement(`Project renamed to ${title}.`);
-      return;
+      return { ok: true };
     }
-    toast.error(
+    const message =
       result.reason === "quota"
         ? "Browser storage is full. Delete an older project and try again."
-        : "That project could not be renamed.",
-    );
+        : "That project could not be renamed.";
+    toast.error(message);
     setAnnouncement("Rename failed.");
+    return { ok: false, message: "Rename failed" };
   }
 
-  function handleDelete(id: string) {
+  function handleDelete(id: string): ActionOutcome {
     const project = projects.find((candidate) => candidate.id === id);
     const result = deleteProject(id);
     if (result.status === "ok") {
       toast.success("Project deleted.");
       setAnnouncement(`${project?.title ?? "Project"} deleted.`);
-      return;
+      return { ok: true };
     }
     toast.error("That project could not be deleted.");
     setAnnouncement("Delete failed.");
+    return { ok: false, message: "Delete failed" };
   }
 
   return (
@@ -95,7 +98,7 @@ export function ProjectList() {
       ) : null}
 
       {projects.length === 0 ? (
-        <div className="mt-10 rounded-lg border border-hairline bg-surface/60 p-8 text-center">
+        <div className="fp-panel fp-panel-tinted mt-10 p-8 text-center">
           <span className="mx-auto mb-4 flex size-10 items-center justify-center rounded-md border border-hairline-strong bg-surface-raised text-ink-muted">
             <FolderOpen aria-hidden className="size-4" />
           </span>
@@ -126,3 +129,4 @@ export function ProjectList() {
     </div>
   );
 }
+

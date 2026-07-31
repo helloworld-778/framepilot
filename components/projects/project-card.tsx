@@ -3,37 +3,45 @@
 import { ArrowUpRight, Clock, Frame, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 
+import type { ActionOutcome } from "@/components/shared/action-feedback-button";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { usePointerBloom } from "@/components/shared/interactive-card";
 import { PaletteStrip } from "@/components/shared/palette-strip";
 import { RenameProjectDialog } from "@/components/projects/rename-project-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DIRECTORY_BY_ID } from "@/data/directories";
 import { DURATION_LABELS, readinessBandFor } from "@/lib/constants";
+import { directionAttr } from "@/lib/directory-theme";
 import { formatRelative } from "@/lib/format";
 import type { ReadinessBand, SavedProject } from "@/types";
 
 const TONE_TEXT: Record<ReadinessBand["tone"], string> = {
   strong: "text-signal-success",
-  steady: "text-brand-soft",
+  steady: "text-dir-soft",
   caution: "text-signal-warning",
   weak: "text-signal-danger",
 };
 
 interface ProjectCardProps {
   project: SavedProject;
-  onRename: (id: string, title: string) => void;
-  onDelete: (id: string) => void;
+  onRename: (id: string, title: string) => ActionOutcome;
+  onDelete: (id: string) => ActionOutcome;
 }
 
 export function ProjectCard({ project, onRename, onDelete }: ProjectCardProps) {
   const directory = DIRECTORY_BY_ID[project.output.directoryId];
   const band = readinessBandFor(project.output.readinessScore);
+  const bloom = usePointerBloom();
 
   return (
-    <article className="group relative flex w-full flex-col rounded-lg border border-hairline bg-surface/60 transition-colors focus-within:border-brand/60 hover:border-hairline-strong">
+    <article
+      {...directionAttr(project.output.directoryId)}
+      {...bloom}
+      className="fp-panel fp-panel-tinted fp-card-interactive group relative flex w-full flex-col overflow-hidden"
+    >
       {/* A single palette bar as the visual cue for the direction. */}
-      <div aria-hidden className="flex h-1 overflow-hidden rounded-t-lg">
+      <div aria-hidden className="flex h-1 overflow-hidden">
         {directory.palette.map((swatch) => (
           <span
             key={swatch.hex}
@@ -43,19 +51,25 @@ export function ProjectCard({ project, onRename, onDelete }: ProjectCardProps) {
         ))}
       </div>
 
+      {/* Folder tab strip, so a saved project reads like a call sheet. */}
+      <div className="flex items-center justify-between gap-3 border-b border-hairline px-5 py-2.5">
+        <span className="fp-slate text-[0.6rem] uppercase">Saved plan</span>
+        <span aria-hidden className="fp-perf h-1.5 w-16 opacity-60" />
+      </div>
+
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-base font-medium leading-snug text-ink">
             <Link
               href={`/projects/${project.id}`}
-              className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+              className="rounded-sm transition-colors hover:text-dir-soft focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
             >
               {project.title}
             </Link>
           </h3>
           <Badge
             variant="outline"
-            className="shrink-0 border-hairline-strong text-[0.65rem] uppercase tracking-[0.12em] text-ink-muted"
+            className="shrink-0 border-dir/40 bg-dir/10 text-[0.65rem] uppercase tracking-slate text-dir-soft"
           >
             {directory.name}
           </Badge>
@@ -113,6 +127,8 @@ export function ProjectCard({ project, onRename, onDelete }: ProjectCardProps) {
               title="Delete this project?"
               description={`"${project.title}" will be removed from this browser. This cannot be undone.`}
               confirmLabel="Delete project"
+              workingLabel="Deleting…"
+              successLabel="Deleted"
               onConfirm={() => onDelete(project.id)}
               trigger={
                 <Button

@@ -3,6 +3,10 @@
 import { Download, FolderOpen, Pencil, RotateCcw, Save } from "lucide-react";
 import Link from "next/link";
 
+import {
+  ActionFeedbackButton,
+  type ActionOutcome,
+} from "@/components/shared/action-feedback-button";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { CopyButton } from "@/components/shared/copy-button";
 import { RenameProjectDialog } from "@/components/projects/rename-project-dialog";
@@ -14,11 +18,11 @@ interface WorkspaceActionBarProps {
   hasUnsavedEdits: boolean;
   mode: "draft" | "project";
   projectTitle?: string;
-  onPrimarySave: () => void;
-  onSaveAsProject: () => void;
-  onRenameProject: (title: string) => void;
-  onDownload: () => void;
-  onResetDemo: () => void;
+  onPrimarySave: () => ActionOutcome;
+  onSaveAsProject: () => ActionOutcome;
+  onRenameProject: (title: string) => ActionOutcome;
+  onDownload: () => ActionOutcome;
+  onResetDemo: () => ActionOutcome;
 }
 
 export function WorkspaceActionBar({
@@ -35,20 +39,35 @@ export function WorkspaceActionBar({
   const isProject = mode === "project";
 
   return (
-    <div className="sticky top-16 z-30 -mx-5 border-b border-hairline bg-canvas/90 px-5 py-3 backdrop-blur-sm sm:-mx-8 sm:px-8">
+    <div className="sticky top-16 z-30 -mx-5 border-b border-hairline bg-canvas/92 px-5 py-3 shadow-[0_12px_30px_-28px_rgb(0_0_0/0.9)] backdrop-blur-[6px] sm:-mx-8 sm:px-8">
       <div className="flex flex-wrap items-center gap-2">
         <CopyButton value={output.masterPrompt} label="Copy prompt" />
         <CopyButton value={output.negativePrompt} label="Copy negative prompt" />
 
-        <Button type="button" variant="outline" size="sm" onClick={onDownload}>
-          <Download aria-hidden className="size-3.5" />
-          Download JSON
-        </Button>
+        <ActionFeedbackButton
+          idleLabel="Download JSON"
+          workingLabel="Preparing…"
+          successLabel="Downloaded"
+          errorLabel="Download failed"
+          onAction={onDownload}
+          icon={Download}
+          announceSuccess="Plan downloaded as JSON to this device"
+        />
 
-        <Button type="button" size="sm" onClick={onPrimarySave}>
-          <Save aria-hidden className="size-3.5" />
-          {isProject ? "Save changes" : "Save draft"}
-        </Button>
+        <ActionFeedbackButton
+          idleLabel={isProject ? "Save changes" : "Save draft"}
+          workingLabel="Saving…"
+          successLabel="Saved locally"
+          errorLabel="Save failed"
+          onAction={onPrimarySave}
+          icon={Save}
+          variant="default"
+          announceSuccess={
+            isProject
+              ? "Project changes saved locally in this browser"
+              : "Draft saved locally in this browser"
+          }
+        />
 
         {isProject ? (
           <RenameProjectDialog
@@ -62,10 +81,15 @@ export function WorkspaceActionBar({
             }
           />
         ) : (
-          <Button type="button" variant="outline" size="sm" onClick={onSaveAsProject}>
-            <FolderOpen aria-hidden className="size-3.5" />
-            Save as project
-          </Button>
+          <ActionFeedbackButton
+            idleLabel="Save as project"
+            workingLabel="Saving…"
+            successLabel="Saved locally"
+            errorLabel="Save failed"
+            onAction={onSaveAsProject}
+            icon={FolderOpen}
+            announceSuccess="Scene saved locally as a project in this browser"
+          />
         )}
 
         {hasUnsavedEdits ? (
@@ -93,6 +117,8 @@ export function WorkspaceActionBar({
             title="Reset the demo?"
             description="This clears the current draft and every saved project from this browser, then returns you to the scene brief. It cannot be undone."
             confirmLabel="Reset everything"
+            workingLabel="Resetting…"
+            successLabel="Demo reset"
             onConfirm={onResetDemo}
           />
         </div>

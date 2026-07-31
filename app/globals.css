@@ -3,31 +3,51 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  FramePilot design tokens — dark editorial, single theme.
-  Raw palette first, then the semantic contract the UI primitives consume.
+  FramePilot design tokens — layered cinematic darkness, single theme.
+
+  Three layers of colour:
+    1. Raw palette      — the studio's own greys, inks, and accents
+    2. Semantic tokens  — what components/ui/* consume
+    3. Direction tokens — per-creative-direction accents, scoped with
+                          [data-direction="…"] so any subtree can inherit them
 */
 :root {
-  /* Raw palette */
-  --fp-canvas: #0b0b0f;
-  --fp-surface: #12131a;
-  --fp-surface-raised: #191b24;
-  --fp-surface-sunken: #0e0f15;
-  --fp-ink: #f4f1ea;
-  /* Secondary text sits at ~8.4:1 on canvas, tertiary at ~5.8:1 on surface. */
-  --fp-ink-muted: #b4b0a6;
-  --fp-ink-faint: #93908a;
+  /* Foundation: deep ink and charcoal rather than flat black */
+  --fp-canvas: #08090d;
+  --fp-canvas-deep: #05060a;
+  --fp-surface: #101218;
+  --fp-surface-raised: #171a22;
+  --fp-surface-sunken: #0b0c11;
+  --fp-surface-lifted: #1e2129;
+
+  /* Text: warm off-white, with deliberately strong secondary tones */
+  --fp-ink: #f6f3ec;
+  --fp-ink-muted: #c2beb4;
+  --fp-ink-faint: #9b978f;
+
+  /* Studio accents */
   --fp-accent: #7c6cf0;
-  --fp-accent-soft: #a99bff;
+  --fp-accent-soft: #b3a8ff;
   --fp-accent-deep: #5b62e8;
   --fp-highlight: #e8b562;
-  --fp-hairline: #262833;
-  --fp-hairline-strong: #333648;
-  --fp-danger: #e5484d;
-  --fp-success: #57b894;
-  --fp-warning: #e0a458;
+
+  --fp-hairline: #23262f;
+  --fp-hairline-strong: #333747;
+  --fp-danger: #f0565b;
+  --fp-success: #5fc39c;
+  --fp-warning: #e4a95c;
+
+  /* Default direction tokens, overridden per direction below */
+  --dir-accent: var(--fp-accent);
+  --dir-accent-soft: var(--fp-accent-soft);
+  --dir-accent-2: var(--fp-highlight);
+  --dir-atm-1: #0b0d15;
+  --dir-atm-2: #131a2a;
+  --dir-atm-3: #2a3140;
+  --dir-grain: 0.055;
 
   /* Semantic contract used by components/ui/* */
-  --radius: 0.625rem;
+  --radius: 0.7rem;
   --background: var(--fp-canvas);
   --foreground: var(--fp-ink);
   --card: var(--fp-surface);
@@ -35,18 +55,67 @@
   --popover: var(--fp-surface-raised);
   --popover-foreground: var(--fp-ink);
   --primary: var(--fp-accent);
-  --primary-foreground: #0a0912;
+  --primary-foreground: #08070f;
   --secondary: var(--fp-surface-raised);
   --secondary-foreground: var(--fp-ink);
-  --muted: #16171f;
+  --muted: #14161d;
   --muted-foreground: var(--fp-ink-muted);
-  --accent: #1e2029;
+  --accent: #1c1f28;
   --accent-foreground: var(--fp-ink);
   --destructive: var(--fp-danger);
-  --destructive-foreground: #140607;
+  --destructive-foreground: #170608;
   --border: var(--fp-hairline);
-  --input: #2a2c38;
-  --ring: #8f82f5;
+  --input: #2a2e39;
+  --ring: #9b8ffa;
+
+  /* Elevation and edges, shared so panels stay consistent */
+  --fp-shadow-panel: 0 24px 70px -42px rgb(0 0 0 / 0.95);
+  --fp-shadow-lift: 0 26px 60px -32px rgb(0 0 0 / 0.85);
+  --fp-shadow-inset: inset 0 1px 0 0 rgb(255 255 255 / 0.035);
+}
+
+/* ---------------------------------------------------------------- *
+   Direction tokens
+ * ---------------------------------------------------------------- */
+
+[data-direction="nonlinear-suspense"] {
+  --dir-accent: #8b7bff;
+  --dir-accent-soft: #c0b6ff;
+  --dir-accent-2: #e8b562;
+  --dir-atm-1: #080a11;
+  --dir-atm-2: #101a2b;
+  --dir-atm-3: #2b3644;
+  --dir-grain: 0.07;
+}
+
+[data-direction="whimsical-fantasy"] {
+  --dir-accent: #e9b872;
+  --dir-accent-soft: #f3d6a4;
+  --dir-accent-2: #e08a72;
+  --dir-atm-1: #150f1f;
+  --dir-atm-2: #1f1a3a;
+  --dir-atm-3: #4a3866;
+  --dir-grain: 0.05;
+}
+
+[data-direction="documentary-realism"] {
+  --dir-accent: #cf8058;
+  --dir-accent-soft: #e8dfc9;
+  --dir-accent-2: #8b9c68;
+  --dir-atm-1: #131418;
+  --dir-atm-2: #1e222a;
+  --dir-atm-3: #39414a;
+  --dir-grain: 0.085;
+}
+
+[data-direction="premium-product-film"] {
+  --dir-accent: #e0c9a6;
+  --dir-accent-soft: #f2ece2;
+  --dir-accent-2: #b5764a;
+  --dir-atm-1: #0e0f12;
+  --dir-atm-2: #191b1f;
+  --dir-atm-3: #2f3339;
+  --dir-grain: 0.04;
 }
 
 @theme inline {
@@ -71,9 +140,11 @@
   --color-ring: var(--ring);
 
   --color-canvas: var(--fp-canvas);
+  --color-canvas-deep: var(--fp-canvas-deep);
   --color-surface: var(--fp-surface);
   --color-surface-raised: var(--fp-surface-raised);
   --color-surface-sunken: var(--fp-surface-sunken);
+  --color-surface-lifted: var(--fp-surface-lifted);
   --color-ink: var(--fp-ink);
   --color-ink-muted: var(--fp-ink-muted);
   --color-ink-faint: var(--fp-ink-faint);
@@ -87,15 +158,24 @@
   --color-signal-warning: var(--fp-warning);
   --color-signal-danger: var(--fp-danger);
 
+  /* Direction-aware utilities: text-dir, border-dir, bg-dir, ring-dir */
+  --color-dir: var(--dir-accent);
+  --color-dir-soft: var(--dir-accent-soft);
+  --color-dir-alt: var(--dir-accent-2);
+  --color-dir-atm-1: var(--dir-atm-1);
+  --color-dir-atm-2: var(--dir-atm-2);
+  --color-dir-atm-3: var(--dir-atm-3);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 6px);
 
   --tracking-editorial: -0.02em;
+  --tracking-slate: 0.18em;
 }
 
 @layer base {
@@ -114,10 +194,29 @@
     font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
+    /* Base atmosphere: two cool pools and one warm, all barely there. */
+    background-image:
+      radial-gradient(
+        70rem 40rem at 8% -10%,
+        color-mix(in oklab, var(--fp-accent) 12%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        56rem 34rem at 96% 2%,
+        color-mix(in oklab, #2b3a6b 22%, transparent),
+        transparent 62%
+      ),
+      radial-gradient(
+        60rem 40rem at 50% 108%,
+        color-mix(in oklab, #3a2b52 20%, transparent),
+        transparent 66%
+      );
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
 
   ::selection {
-    background-color: color-mix(in oklab, var(--fp-accent) 40%, transparent);
+    background-color: color-mix(in oklab, var(--dir-accent) 40%, transparent);
     color: var(--fp-ink);
   }
 
@@ -139,30 +238,105 @@
 }
 
 @layer components {
+  /* ---- Ambient atmosphere ------------------------------------- */
+
   /*
-    Cinematic backdrop, built entirely in CSS.
-    Two low-opacity radial pools plus a fine diagonal weave — no imagery.
+    Cinematic light falloff, not a wallpaper.
+
+    Three stacked radial pools read as one key source with spill: a cool key
+    from the upper left, an atmospheric fill from the upper right, and a warm
+    bounce low in frame. Inside a [data-direction] subtree these inherit that
+    direction's palette automatically.
+
+    A second layer (::after) carries the only movement: a 22s breathing drift,
+    enabled solely on wide fine-pointer displays with motion allowed. Opacity is
+    capped so text contrast improves rather than degrades.
   */
   .fp-atmosphere {
     position: absolute;
     inset: 0;
     pointer-events: none;
+    overflow: hidden;
     background:
       radial-gradient(
-        60rem 32rem at 12% -8%,
-        color-mix(in oklab, var(--fp-accent) 22%, transparent),
+        58rem 30rem at 10% -10%,
+        color-mix(in oklab, var(--dir-accent) 18%, transparent),
         transparent 62%
       ),
       radial-gradient(
-        44rem 26rem at 92% 4%,
-        color-mix(in oklab, var(--fp-accent-deep) 16%, transparent),
+        42rem 26rem at 94% 2%,
+        color-mix(in oklab, var(--dir-atm-2) 62%, transparent),
         transparent 60%
       ),
       radial-gradient(
-        34rem 22rem at 68% 96%,
-        color-mix(in oklab, var(--fp-highlight) 8%, transparent),
+        32rem 22rem at 66% 98%,
+        color-mix(in oklab, var(--dir-accent-2) 9%, transparent),
         transparent 66%
       );
+  }
+
+  .fp-atmosphere::after {
+    content: "";
+    position: absolute;
+    inset: -12%;
+    pointer-events: none;
+    opacity: 0.5;
+    background:
+      radial-gradient(
+        34rem 24rem at 26% 18%,
+        color-mix(in oklab, var(--dir-atm-3) 34%, transparent),
+        transparent 64%
+      ),
+      radial-gradient(
+        28rem 20rem at 78% 62%,
+        color-mix(in oklab, var(--dir-accent) 12%, transparent),
+        transparent 62%
+      );
+    /* Falloff mask, so the drift never reaches text edges. */
+    mask-image: radial-gradient(120% 100% at 50% 30%, #000 30%, transparent 78%);
+  }
+
+  /* Softer variant for panels, where copy sits directly on top. */
+  .fp-atmosphere-soft {
+    background:
+      radial-gradient(
+        26rem 18rem at 12% -12%,
+        color-mix(in oklab, var(--dir-accent) 14%, transparent),
+        transparent 64%
+      ),
+      radial-gradient(
+        22rem 16rem at 92% 8%,
+        color-mix(in oklab, var(--dir-atm-2) 46%, transparent),
+        transparent 62%
+      );
+  }
+
+  .fp-atmosphere-soft::after {
+    opacity: 0.34;
+  }
+
+  /*
+    Movement is opt-in by capability: wide viewport, fine pointer, motion
+    allowed. Transform and opacity only — no filters, no JS loop.
+  */
+  @media (min-width: 64rem) and (hover: hover) and (pointer: fine) {
+    @media (prefers-reduced-motion: no-preference) {
+      .fp-atmosphere::after {
+        animation: fp-atmosphere-drift 22s ease-in-out infinite alternate;
+        will-change: transform, opacity;
+      }
+    }
+  }
+
+  @keyframes fp-atmosphere-drift {
+    from {
+      transform: translate3d(-1.2%, -0.8%, 0) scale(1);
+      opacity: 0.4;
+    }
+    to {
+      transform: translate3d(1.6%, 1.1%, 0) scale(1.04);
+      opacity: 0.6;
+    }
   }
 
   .fp-grid-weave {
@@ -177,6 +351,33 @@
     opacity: 0.5;
   }
 
+  /*
+    Film grain. An inline SVG turbulence tile — embedded in the stylesheet, so
+    there is no network request and no image file in the repository.
+  */
+  .fp-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: var(--dir-grain);
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+    background-size: 140px 140px;
+  }
+
+  .fp-vignette::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      120% 100% at 50% 40%,
+      transparent 42%,
+      rgb(0 0 0 / 0.42) 100%
+    );
+  }
+
   .fp-filmstrip {
     background-image: repeating-linear-gradient(
       to right,
@@ -185,7 +386,16 @@
     );
   }
 
-  /* Hairline top edge that reads as a light leak on panels. */
+  /* Sprocket-hole rail, drawn with gradients only. */
+  .fp-perf {
+    background-image: repeating-linear-gradient(
+      to right,
+      transparent 0 0.45rem,
+      color-mix(in oklab, var(--fp-hairline-strong) 90%, transparent) 0.45rem 0.85rem,
+      transparent 0.85rem 1.3rem
+    );
+  }
+
   .fp-edge-light {
     position: relative;
   }
@@ -199,9 +409,265 @@
     background: linear-gradient(
       to right,
       transparent,
-      color-mix(in oklab, var(--fp-accent-soft) 55%, transparent),
+      color-mix(in oklab, var(--dir-accent-soft) 55%, transparent),
       transparent
     );
+  }
+
+  /* ---- Surfaces ------------------------------------------------ */
+
+  .fp-panel {
+    position: relative;
+    border: 1px solid var(--fp-hairline);
+    border-radius: var(--radius-lg);
+    background:
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--fp-surface-raised) 92%, transparent),
+        color-mix(in oklab, var(--fp-surface) 96%, transparent)
+      );
+    box-shadow: var(--fp-shadow-panel), var(--fp-shadow-inset);
+  }
+
+  .fp-panel-tinted {
+    background:
+      radial-gradient(
+        120% 90% at 0% 0%,
+        color-mix(in oklab, var(--dir-accent) 9%, transparent),
+        transparent 58%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--fp-surface-raised) 92%, transparent),
+        color-mix(in oklab, var(--fp-surface) 96%, transparent)
+      );
+  }
+
+  /* Interactive card: depth lift plus an inner accent glow on hover/focus. */
+  .fp-card-interactive {
+    position: relative;
+    isolation: isolate;
+    transition:
+      border-color 200ms ease,
+      box-shadow 220ms ease,
+      transform 220ms ease,
+      background-color 200ms ease;
+  }
+
+  /*
+    Internal light bloom. `--bloom-x/--bloom-y` are set by `usePointerBloom` on
+    fine pointers; the fallback keeps a composed top-lit look for touch,
+    keyboard focus, and reduced motion.
+  */
+  .fp-card-interactive::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 240ms ease, background-position 120ms linear;
+    background: radial-gradient(
+      42% 46% at var(--bloom-x, 50%) var(--bloom-y, 0%),
+      color-mix(in oklab, var(--dir-accent) 22%, transparent),
+      color-mix(in oklab, var(--dir-atm-3) 12%, transparent) 46%,
+      transparent 72%
+    );
+  }
+
+  .fp-card-interactive:hover::after,
+  .fp-card-interactive:focus-visible::after,
+  .fp-card-interactive:focus-within::after {
+    opacity: 1;
+  }
+
+  .fp-card-interactive:hover,
+  .fp-card-interactive:focus-visible,
+  .fp-card-interactive:focus-within {
+    border-color: color-mix(in oklab, var(--dir-accent) 55%, var(--fp-hairline));
+    box-shadow: var(--fp-shadow-lift);
+  }
+
+  /* A 3px lift, only where motion is welcome. */
+  @media (hover: hover) and (pointer: fine) {
+    .fp-card-interactive:hover {
+      transform: translateY(-3px);
+    }
+  }
+
+  /* Touch gets a stable pressed state instead of a hover state. */
+  @media (hover: none) {
+    .fp-card-interactive:active {
+      border-color: color-mix(in oklab, var(--dir-accent) 45%, var(--fp-hairline));
+      background-color: color-mix(in oklab, var(--fp-surface-lifted) 70%, transparent);
+    }
+
+    .fp-card-interactive:active::after {
+      opacity: 1;
+    }
+  }
+
+  /* Activated selection state: halo, richer ground, no layout shift. */
+  .fp-selected {
+    border-color: color-mix(in oklab, var(--dir-accent) 70%, var(--fp-hairline));
+    background:
+      radial-gradient(
+        120% 100% at 0% 0%,
+        color-mix(in oklab, var(--dir-accent) 18%, transparent),
+        transparent 60%
+      ),
+      color-mix(in oklab, var(--fp-surface-raised) 94%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--dir-accent) 45%, transparent),
+      0 0 34px -10px color-mix(in oklab, var(--dir-accent) 40%, transparent),
+      var(--fp-shadow-inset);
+  }
+
+  .fp-swatch-glow {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.12),
+      0 0 12px -2px color-mix(in oklab, var(--dir-accent) 60%, transparent);
+  }
+
+  /* ---- Mood frames (timeline + reel fallbacks) ----------------- */
+
+  /*
+    A non-empty abstract frame built only from gradients. Per-shot variation
+    comes from --mf-x / --mf-y / --mf-tilt / --mf-streak set inline.
+  */
+  .fp-mood {
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(
+        60% 46% at var(--mf-x, 50%) var(--mf-y, 26%),
+        color-mix(in oklab, var(--dir-accent) 34%, transparent),
+        transparent 68%
+      ),
+      linear-gradient(
+        var(--mf-tilt, 168deg),
+        color-mix(in oklab, var(--dir-atm-3) 78%, transparent) 0%,
+        color-mix(in oklab, var(--dir-atm-2) 92%, transparent) 46%,
+        var(--dir-atm-1) 100%
+      );
+  }
+
+  /* Soft shadowed mass, reads as a silhouette or foreground object. */
+  .fp-mood::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(
+        42% 34% at var(--mf-mass-x, 26%) 96%,
+        rgb(0 0 0 / 0.72),
+        transparent 72%
+      ),
+      linear-gradient(
+        var(--mf-streak, 96deg),
+        transparent 38%,
+        color-mix(in oklab, var(--dir-accent-soft) 20%, transparent) 50%,
+        transparent 62%
+      );
+  }
+
+  .fp-mood-vignette::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      130% 110% at 50% 30%,
+      transparent 38%,
+      rgb(0 0 0 / 0.55) 100%
+    );
+  }
+
+  /* Playhead + light sweep for the active timeline segment. */
+  .fp-playhead {
+    position: absolute;
+    inset-block: 0;
+    width: 2px;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--dir-accent-soft),
+      transparent
+    );
+    box-shadow: 0 0 10px color-mix(in oklab, var(--dir-accent) 70%, transparent);
+  }
+
+  .fp-sweep::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      color-mix(in oklab, var(--dir-accent-soft) 28%, transparent) 50%,
+      transparent 70%
+    );
+    transform: translateX(-100%);
+    animation: fp-sweep-move 2.6s ease-in-out infinite;
+  }
+
+  @keyframes fp-sweep-move {
+    0% {
+      transform: translateX(-100%);
+    }
+    60%,
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Hero vocabulary rail drift. */
+  .fp-rail-track {
+    animation: fp-rail-drift 38s linear infinite;
+  }
+
+  @keyframes fp-rail-drift {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  /*
+    Phrase reveal. `both` fill means the text ends in its natural state, so the
+    copy is readable even if the animation never runs.
+  */
+  .fp-reveal > * {
+    animation: fp-phrase-reveal 380ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+
+  .fp-reveal > *:nth-child(2) {
+    animation-delay: 90ms;
+  }
+
+  .fp-reveal > *:nth-child(3) {
+    animation-delay: 180ms;
+  }
+
+  @keyframes fp-phrase-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+      filter: blur(3px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+
+  /* Timecode / slate detail used for step and shot numbers. */
+  .fp-slate {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    letter-spacing: 0.08em;
+    color: color-mix(in oklab, var(--dir-accent-soft) 80%, var(--fp-ink-muted));
   }
 }
 
@@ -214,5 +680,18 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Repeating decorative effects are removed outright, not just sped up. */
+  .fp-sweep::before,
+  .fp-rail-track,
+  .fp-atmosphere::after {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  /* Cards settle without moving; the light state still appears instantly. */
+  .fp-card-interactive:hover {
+    transform: none !important;
   }
 }

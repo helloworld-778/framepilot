@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { RefreshCw, TriangleAlert } from "lucide-react";
 import Link from "next/link";
@@ -18,7 +18,7 @@ export default function ErrorBoundary({
 }) {
   return (
     <div className="mx-auto w-full max-w-3xl px-5 py-24 sm:px-8">
-      <div className="rounded-lg border border-signal-danger/40 bg-surface/60 p-8 text-center">
+      <div className="fp-panel relative overflow-hidden border-signal-danger/40 p-8 text-center">
         <span className="mx-auto mb-4 flex size-10 items-center justify-center rounded-md border border-signal-danger/40 bg-signal-danger/10 text-signal-danger">
           <TriangleAlert aria-hidden className="size-4" />
         </span>
@@ -50,3 +50,4 @@ export default function ErrorBoundary({
     </div>
   );
 }
+

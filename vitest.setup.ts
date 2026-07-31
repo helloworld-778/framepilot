@@ -35,6 +35,27 @@ if (!("PointerEvent" in globalThis)) {
   globalThis.PointerEvent = globalThis.MouseEvent as unknown as typeof PointerEvent;
 }
 
+// Framer Motion's whileInView needs IntersectionObserver. The stub reports the
+// target as visible immediately, so entrance animations settle at once in tests.
+if (!("IntersectionObserver" in globalThis)) {
+  class IntersectionObserverStub {
+    constructor(private readonly callback: IntersectionObserverCallback) {}
+    observe(target: Element) {
+      this.callback(
+        [{ isIntersecting: true, target } as unknown as IntersectionObserverEntry],
+        this as unknown as IntersectionObserver,
+      );
+    }
+    unobserve() {}
+    disconnect() {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return [];
+    }
+  }
+  globalThis.IntersectionObserver =
+    IntersectionObserverStub as unknown as typeof IntersectionObserver;
+}
+
 // Radix primitives call these before jsdom defines them.
 for (const method of ["hasPointerCapture", "setPointerCapture", "releasePointerCapture"] as const) {
   if (!(method in Element.prototype)) {

@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useRef } from "react";
 
+import { DirectionCanvas } from "@/components/shared/direction-canvas";
 import type { StoryboardShot } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,17 @@ const ROLE_LABELS: Record<StoryboardShot["role"], string> = {
   resolve: "Resolve",
 };
 
+/** Role order nudges the mood-frame light so shots do not look identical. */
+const ROLE_SEED: Record<StoryboardShot["role"], number> = {
+  establish: 1,
+  withhold: 2,
+  fragment: 3,
+  reveal: 4,
+  develop: 5,
+  detail: 6,
+  resolve: 7,
+};
+
 interface StoryboardTimelineProps {
   shots: StoryboardShot[];
   activeShotId: string | null;
@@ -24,9 +35,9 @@ interface StoryboardTimelineProps {
 }
 
 /**
- * The primary visual of the workspace: proportional-width segments across the
- * chosen runtime. Arrow keys move between segments, and selecting one focuses
- * the matching shot card.
+ * The primary visual of the workspace: proportional-width mood frames across
+ * the chosen runtime. Widths stay truthful to each shot's duration, and the
+ * keyboard contract (arrows, Home, End) is unchanged.
  */
 export function StoryboardTimeline({
   shots,
@@ -71,24 +82,26 @@ export function StoryboardTimeline({
   return (
     <section
       aria-labelledby="timeline-heading"
-      className="fp-edge-light rounded-lg border border-hairline bg-surface/60 p-5"
+      className="fp-panel fp-panel-tinted fp-edge-light p-5"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2
           id="timeline-heading"
-          className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-ink-faint"
+          className="text-[0.7rem] font-medium uppercase tracking-slate text-ink-muted"
         >
           Storyboard timeline
         </h2>
-        <p className="font-mono text-[0.7rem] text-brand-soft">
+        <p className="font-mono text-[0.7rem] text-dir-soft">
           {shots.length} shots · {totalSeconds}s
         </p>
       </div>
 
+      <div aria-hidden className="fp-perf mt-3 h-1.5 opacity-60" />
+
       <div
         role="group"
         aria-label="Shot timeline. Use the arrow keys to move between shots."
-        className="mt-4 flex items-stretch gap-1.5 overflow-x-auto pb-1"
+        className="mt-3 flex items-stretch gap-1.5 overflow-x-auto pb-1"
       >
         {shots.map((shot, index) => {
           const start = starts[index] ?? 0;
@@ -100,7 +113,7 @@ export function StoryboardTimeline({
               // Width is proportional to duration, with a floor so segments
               // stay legible on a 375px screen (the row scrolls if needed).
               style={{ flexGrow: shot.durationSeconds, flexBasis: 0 }}
-              className="min-w-[4.75rem] shrink-0 sm:min-w-0 sm:shrink"
+              className="min-w-[5.5rem] shrink-0 sm:min-w-0 sm:shrink"
               onKeyDown={(event) => handleKeyDown(event, index)}
             >
               <button
@@ -111,47 +124,60 @@ export function StoryboardTimeline({
                 onClick={() => onSelect(shot.id)}
                 aria-current={isActive ? "true" : undefined}
                 className={cn(
-                  "group flex w-full flex-col gap-2 rounded-md border p-2.5 text-left transition-colors",
+                  "group relative block w-full overflow-hidden rounded-md border text-left transition-[border-color,box-shadow,transform]",
                   isActive
-                    ? "border-brand/70 bg-brand/10"
-                    : "border-hairline bg-surface-sunken/70 hover:border-hairline-strong",
+                    ? "border-dir/70 shadow-[0_0_26px_-10px_color-mix(in_oklab,var(--dir-accent)_60%,transparent)]"
+                    : "border-hairline hover:border-hairline-strong",
                 )}
               >
-                <span className="flex items-baseline justify-between gap-1">
-                  <span className="font-mono text-[0.65rem] text-ink-faint">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span
-                    className={cn(
-                      "font-mono text-[0.65rem]",
-                      isActive ? "text-brand-soft" : "text-ink-faint",
-                    )}
-                  >
-                    {shot.durationSeconds}s
-                  </span>
-                </span>
+                {/* Abstract mood frame: CSS only, varied by role and order. */}
+                <span className="relative block h-20 sm:h-24">
+                  <DirectionCanvas seed={index * 3 + (ROLE_SEED[shot.role] ?? 1)} />
 
-                <span className="relative block h-1.5 overflow-hidden rounded-full bg-hairline">
-                  <motion.span
-                    layout
-                    className={cn(
-                      "absolute inset-y-0 left-0 w-full rounded-full",
-                      isActive ? "bg-brand" : "bg-hairline-strong group-hover:bg-brand/50",
-                    )}
-                  />
+                  {isActive ? (
+                    <>
+                      <span aria-hidden className="fp-playhead left-1.5" />
+                      <span
+                        aria-hidden
+                        className="fp-sweep pointer-events-none absolute inset-0 overflow-hidden"
+                      />
+                    </>
+                  ) : null}
+
+                  <span className="absolute inset-x-0 top-0 flex items-start justify-between gap-1 p-1.5">
+                    <span className="fp-slate text-[0.6rem]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded bg-canvas-deep/75 px-1 font-mono text-[0.6rem]",
+                        isActive ? "text-dir-soft" : "text-ink-muted",
+                      )}
+                    >
+                      {shot.durationSeconds}s
+                    </span>
+                  </span>
                 </span>
 
                 <span
                   className={cn(
-                    "truncate text-[0.7rem]",
-                    isActive ? "text-ink" : "text-ink-muted",
+                    "block border-t px-2 py-1.5 transition-colors",
+                    isActive
+                      ? "border-dir/40 bg-dir/12"
+                      : "border-hairline bg-surface-sunken/80",
                   )}
-                  title={ROLE_LABELS[shot.role]}
                 >
-                  {ROLE_LABELS[shot.role]}
-                </span>
-                <span className="font-mono text-[0.6rem] text-ink-faint">
-                  {start}s–{start + shot.durationSeconds}s
+                  <span
+                    className={cn(
+                      "block truncate text-[0.7rem] font-medium",
+                      isActive ? "text-ink" : "text-ink-muted",
+                    )}
+                  >
+                    {ROLE_LABELS[shot.role]}
+                  </span>
+                  <span className="mt-0.5 block font-mono text-[0.6rem] text-ink-faint">
+                    {start}s–{start + shot.durationSeconds}s
+                  </span>
                 </span>
               </button>
             </div>

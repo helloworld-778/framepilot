@@ -6,8 +6,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
+import type { ActionOutcome } from "@/components/shared/action-feedback-button";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { StaggerGroup, StaggerItem } from "@/components/shared/stagger";
 import { Button } from "@/components/ui/button";
+import { MoodboardPanel } from "@/components/workspace/moodboard-panel";
 import { PromptPanel } from "@/components/workspace/prompt-panel";
 import { RationalePanel } from "@/components/workspace/rationale-panel";
 import { ReadinessPanel } from "@/components/workspace/readiness-panel";
@@ -18,6 +21,7 @@ import { WorkspaceActionBar } from "@/components/workspace/workspace-action-bar"
 import { WorkspaceHeader } from "@/components/workspace/workspace-header";
 import { PROJECT_CAP, PROJECT_CAP_WARNING_AT } from "@/lib/constants";
 import { generateDirection, rescoreDirection } from "@/lib/director";
+import { directionAttr } from "@/lib/directory-theme";
 import {
   getDraftSnapshot,
   getServerDraftSnapshot,
@@ -155,7 +159,9 @@ export function ResultsWorkspace({
     });
   }, []);
 
-  function reportWriteFailure(reason: "quota" | "unavailable" | "unknown" | "missing") {
+  function reportWriteFailure(
+    reason: "quota" | "unavailable" | "unknown" | "missing",
+  ): ActionOutcome {
     const message =
       reason === "quota"
         ? "Browser storage is full. Delete an older project and try again."
@@ -164,19 +170,19 @@ export function ResultsWorkspace({
           : "This browser blocked local storage, so nothing was saved.";
     toast.error(message);
     setAnnouncement(message);
+    return { ok: false, message: reason === "quota" ? "Storage full" : "Save failed" };
   }
 
   /** Draft mode: keep local edits in the draft. Project mode: update the record. */
-  function handlePrimarySave() {
+  function handlePrimarySave(): ActionOutcome {
     if (!output) {
-      return;
+      return { ok: false, message: "Nothing to save" };
     }
     const now = new Date().toISOString();
 
     if (source.kind === "project") {
       if (!project) {
-        reportWriteFailure("missing");
-        return;
+        return reportWriteFailure("missing");
       }
       const result = saveProject(output.brief, output, now, {
         existingId: project.id,
@@ -185,33 +191,31 @@ export function ResultsWorkspace({
       if (result.status === "ok") {
         setOverlay({});
         toast.success("Project updated.");
-        setAnnouncement("Project updated.");
-        return;
+        setAnnouncement("Project changes saved locally.");
+        return { ok: true };
       }
-      reportWriteFailure(result.reason);
-      return;
+      return reportWriteFailure(result.reason);
     }
 
     const result = saveDraft(output.brief, output, now);
     if (result.status === "ok") {
       setOverlay({});
       toast.success("Draft saved to this browser.");
-      setAnnouncement("Draft saved to this browser.");
-      return;
+      setAnnouncement("Draft saved locally in this browser.");
+      return { ok: true };
     }
-    reportWriteFailure(result.reason);
+    return reportWriteFailure(result.reason);
   }
 
-  function handleSaveAsProject() {
+  function handleSaveAsProject(): ActionOutcome {
     if (!output) {
-      return;
+      return { ok: false, message: "Nothing to save" };
     }
     const now = new Date().toISOString();
     const result = saveProject(output.brief, output, now);
 
     if (result.status !== "ok") {
-      reportWriteFailure(result.reason);
-      return;
+      return reportWriteFailure(result.reason);
     }
 
     setOverlay({});
@@ -224,47 +228,62 @@ export function ResultsWorkspace({
     } else {
       toast.success("Saved as a project.");
     }
-    setAnnouncement("Scene saved as a project.");
+    setAnnouncement("Scene saved locally as a project.");
     router.push(`/projects/${result.project.id}`);
+    return { ok: true };
   }
 
-  function handleRenameProject(title: string) {
+  function handleRenameProject(title: string): ActionOutcome {
     if (source.kind !== "project" || !project) {
-      return;
+      return { ok: false, message: "Project not found" };
     }
     const result = renameProject(project.id, title, new Date().toISOString());
     if (result.status === "ok") {
       toast.success(`Renamed to “${title}”.`);
       setAnnouncement(`Project renamed to ${title}.`);
-      return;
+      return { ok: true };
     }
     reportWriteFailure(result.reason);
+    return { ok: false, message: "Rename failed" };
   }
 
-  function handleDownload() {
+  function handleDownload(): ActionOutcome {
     if (!output) {
-      return;
+      return { ok: false, message: "Nothing to download" };
     }
-    const blob = new Blob([JSON.stringify(output, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `framepilot-${slugify(output.projectTitle)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    // Success here means the blob and the click actually happened locally. No
+    // upload or remote export is involved.
+    try {
+      const blob = new Blob([JSON.stringify(output, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `framepilot-${slugify(output.projectTitle)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      const message = "This browser blocked the download.";
+      toast.error(message);
+      setAnnouncement(message);
+      return { ok: false, message: "Download failed" };
+    }
+
     toast.success("Plan downloaded as JSON.");
-    setAnnouncement("Plan downloaded as JSON.");
+    setAnnouncement("Plan downloaded as JSON to this device.");
+    return { ok: true };
   }
 
-  function handleResetDemo() {
+  function handleResetDemo(): ActionOutcome {
     resetEverything();
     setOverlay({});
     toast.success("Demo reset. Start a new scene whenever you are ready.");
+    setAnnouncement("Demo data cleared from this browser.");
     router.push("/create");
+    return { ok: true };
   }
 
   if (!output) {
@@ -312,7 +331,10 @@ export function ResultsWorkspace({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[88rem] px-5 pb-16 sm:px-8">
+    <div
+      {...directionAttr(output.directoryId)}
+      className="mx-auto w-full max-w-[88rem] px-5 pb-16 sm:px-8"
+    >
       <WorkspaceActionBar
         output={output}
         hasUnsavedEdits={hasUnsavedEdits}
@@ -361,16 +383,20 @@ export function ResultsWorkspace({
             <h2 id="shots-heading" className="sr-only">
               Shot cards
             </h2>
-            {output.shots.map((shot) => (
-              <ShotCard
-                key={shot.id}
-                shot={shot}
-                isActive={shot.id === activeShotId}
-                onSave={handleSaveShot}
-                onRevert={handleRevertShot}
-                onFocus={setActiveShotId}
-              />
-            ))}
+            {/* Brief stagger as the storyboard arrives; collapses under reduced motion. */}
+            <StaggerGroup className="space-y-4" stagger={0.06}>
+              {output.shots.map((shot) => (
+                <StaggerItem key={shot.id} y={8}>
+                  <ShotCard
+                    shot={shot}
+                    isActive={shot.id === activeShotId}
+                    onSave={handleSaveShot}
+                    onRevert={handleRevertShot}
+                    onFocus={setActiveShotId}
+                  />
+                </StaggerItem>
+              ))}
+            </StaggerGroup>
           </section>
 
           <PromptPanel output={output} />
@@ -379,6 +405,7 @@ export function ResultsWorkspace({
         <div className="space-y-6 xl:sticky xl:top-32 xl:self-start">
           <ReadinessPanel output={output} />
           <SuggestionsPanel output={output} />
+          <MoodboardPanel output={output} />
         </div>
       </div>
     </div>
