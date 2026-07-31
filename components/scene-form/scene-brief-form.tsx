@@ -2,16 +2,19 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  AlertTriangle,
   BookOpen,
   CalendarClock,
   Clapperboard,
   Megaphone,
+  PenLine,
   Radio,
   Timer,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -28,8 +31,10 @@ import {
   type ActionOutcome,
   type ActionState,
 } from "@/components/shared/action-feedback-button";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { MagneticCta } from "@/components/shared/magnetic-cta";
 import { SectionHeading } from "@/components/shared/section-heading";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,7 +56,26 @@ import {
 } from "@/lib/constants";
 import { generateDirection } from "@/lib/director";
 import { directionAttr, directoryTheme } from "@/lib/directory-theme";
-import { saveStoredDraftAsProject } from "@/lib/draft-store";
+import {
+  getDraftSnapshot,
+  getServerDraftSnapshot,
+  parseDraftSnapshot,
+  saveStoredDraftAsProject,
+  subscribeToDraft,
+} from "@/lib/draft-store";
+import {
+  editSourceKey,
+  editSourceReturnHref,
+  fingerprintEnvelope,
+  parseEditRequest,
+  resolveEditSource,
+} from "@/lib/edit-source";
+import {
+  getProjectsSnapshot,
+  getServerProjectsSnapshot,
+  parseProjectsSnapshot,
+  subscribeToProjects,
+} from "@/lib/project-store";
 import { sceneFormSchema } from "@/lib/schemas";
 import {
   readDraft,
@@ -135,8 +159,36 @@ export function SceneBriefForm() {
   /** Holds the validated brief while the replace-draft guard is open. */
   const [pendingBrief, setPendingBrief] = useState<SceneBrief | null>(null);
   const appliedParams = useRef(false);
+  const appliedEdit = useRef<string | null>(null);
+  /** Fingerprint of the draft this edit session opened, captured at prefill. */
+  const entryFingerprint = useRef<string | null>(null);
   const submitRef = useRef<HTMLButtonElement | null>(null);
   const activeDemo = clickedDemo ?? searchParams.get("demo") ?? undefined;
+
+  // Edit mode reads its brief from the canonical stores, never from the URL.
+  const draftRaw = useSyncExternalStore(
+    subscribeToDraft,
+    getDraftSnapshot,
+    getServerDraftSnapshot,
+  );
+  const projectsRaw = useSyncExternalStore(
+    subscribeToProjects,
+    getProjectsSnapshot,
+    getServerProjectsSnapshot,
+  );
+  const editRequest = useMemo(
+    () => parseEditRequest(new URLSearchParams(searchParams.toString())),
+    [searchParams],
+  );
+  const editSource = useMemo(
+    () =>
+      resolveEditSource(
+        editRequest,
+        parseDraftSnapshot(draftRaw),
+        parseProjectsSnapshot(projectsRaw),
+      ),
+    [editRequest, draftRaw, projectsRaw],
+  );
 
   const form = useForm<SceneBrief>({
     resolver: zodResolver(sceneFormSchema),
@@ -149,10 +201,28 @@ export function SceneBriefForm() {
   const watched = useWatch({ control: form.control });
   const values: SceneBrief = { ...DEFAULT_SCENE_BRIEF, ...watched };
 
-  // Apply ?demo= and ?direction= once, and otherwise fall back to the last
-  // direction the user worked in.
+  /**
+   * Prefill for edit mode. Runs once per source: the stores resolve after
+   * hydration, so this waits for the real brief rather than guessing at render.
+   * The draft's fingerprint at entry is captured here and compared at submit.
+   */
   useEffect(() => {
-    if (appliedParams.current) {
+    const key = editSourceKey(editSource);
+    if (key === null || appliedEdit.current === key) {
+      return;
+    }
+    appliedEdit.current = key;
+    entryFingerprint.current =
+      editSource.status === "draft" ? editSource.fingerprint : null;
+    if (editSource.status === "draft" || editSource.status === "project") {
+      form.reset(editSource.brief);
+    }
+  }, [editSource, form]);
+
+  // Apply ?demo= and ?direction= once, and otherwise fall back to the last
+  // direction the user worked in. Edit mode owns the values instead.
+  useEffect(() => {
+    if (appliedParams.current || editRequest.mode !== "none") {
       return;
     }
     appliedParams.current = true;
@@ -180,7 +250,7 @@ export function SceneBriefForm() {
     if (preferences.lastDuration) {
       form.setValue("duration", preferences.lastDuration);
     }
-  }, [form, searchParams]);
+  }, [form, searchParams, editRequest.mode]);
 
   function applyDemo(demo: DemoBrief) {
     form.reset(demo.brief);
@@ -224,9 +294,29 @@ export function SceneBriefForm() {
    * Checked at submission time rather than on render, because the draft slot can
    * change during a session (another tab, a reset, a save). Only a readable
    * draft counts: a corrupt one stays with the existing quarantine path.
+   *
+   * Re-directing the very draft you opened is an intentional replacement, so the
+   * Pass 1 guard is skipped for that one case — identified by fingerprint, not by
+   * any new stored field. If the slot now holds a *different* draft, or you came
+   * from a saved project, the guard applies exactly as before.
    */
   function onSubmit(brief: SceneBrief) {
-    if (readDraft().status === "ok") {
+    const stored = readDraft();
+    const liveFingerprint =
+      stored.status === "ok" ? fingerprintEnvelope(stored.value) : null;
+
+    if (editRequest.mode === "draft") {
+      const unchanged =
+        liveFingerprint !== null && liveFingerprint === entryFingerprint.current;
+      if (liveFingerprint === null || unchanged) {
+        commitBrief(brief);
+        return;
+      }
+      setPendingBrief(brief);
+      return;
+    }
+
+    if (liveFingerprint !== null) {
       setPendingBrief(brief);
       return;
     }
@@ -276,12 +366,59 @@ export function SceneBriefForm() {
   const descriptionValue = values.description ?? "";
   const descriptionError = form.formState.errors.description?.message;
 
+  const isEditing = editSource.status === "draft" || editSource.status === "project";
+  const returnHref = editSourceReturnHref(editSource);
+  const backLabel =
+    editSource.status === "project" ? "Back to project" : "Back to workspace";
+
   return (
     <div
       {...directionAttr(values.directoryId)}
       className="relative mx-auto w-full max-w-[88rem] px-5 py-12 sm:px-8"
     >
       <ProgressRail current="brief" />
+
+      {isEditing ? (
+        <div className="fp-panel mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
+          <p className="flex items-center gap-2 text-sm text-ink">
+            <PenLine aria-hidden className="size-3.5 text-dir" />
+            {editSource.status === "project"
+              ? "Editing a saved project’s brief"
+              : "Editing your current working brief"}
+          </p>
+          {form.formState.isDirty ? (
+            <ConfirmDialog
+              trigger={
+                <Button type="button" variant="ghost" size="sm" className="text-ink-muted">
+                  {backLabel}
+                </Button>
+              }
+              title="Discard brief changes?"
+              description="Your edits to this brief have not been directed yet. Leaving now discards them. The stored plan is not affected."
+              confirmLabel="Discard changes"
+              workingLabel="Leaving…"
+              successLabel="Discarded"
+              onConfirm={() => {
+                router.push(returnHref);
+                return { ok: true };
+              }}
+            />
+          ) : (
+            <Button asChild variant="ghost" size="sm" className="text-ink-muted">
+              <Link href={returnHref}>{backLabel}</Link>
+            </Button>
+          )}
+        </div>
+      ) : null}
+
+      {editSource.status === "missing" ? (
+        <p className="mb-6 flex items-start gap-2 rounded-md border border-signal-warning/40 bg-signal-warning/10 p-3 text-xs text-signal-warning">
+          <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+          {editSource.requested === "draft"
+            ? "That working draft is no longer in this browser, so there was nothing to load. Write a new brief below."
+            : "That saved project is not in this browser, so there was nothing to load. Write a new brief below."}
+        </p>
+      ) : null}
 
       <SectionHeading
         as="h1"
@@ -291,7 +428,11 @@ export function SceneBriefForm() {
       />
 
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        // Wrapped so the submit path is only ever built inside the event, which
+        // keeps the draft fingerprint read out of render.
+        onSubmit={(event) => {
+          void form.handleSubmit(onSubmit)(event);
+        }}
         noValidate
         className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12"
       >
@@ -458,7 +599,7 @@ export function SceneBriefForm() {
               <ActionFeedbackButton
                 ref={submitRef}
                 type="submit"
-                idleLabel="Direct my scene"
+                idleLabel={isEditing ? "Re-direct scene" : "Direct my scene"}
                 workingLabel="Directing…"
                 successLabel="Directed"
                 icon={Clapperboard}
@@ -468,8 +609,12 @@ export function SceneBriefForm() {
                 announceSuccess="Scene directed. Opening the workspace."
               />
             </MagneticCta>
-            <p className="text-xs text-ink-faint">
-              Runs locally. Nothing is sent anywhere.
+            <p className="max-w-md text-xs leading-snug text-ink-faint">
+              {editSource.status === "project"
+                ? "Re-directing creates a new working draft. This saved project will not change."
+                : editSource.status === "draft"
+                  ? "Re-directing replaces this working draft with a new plan. Your current shot edits will be replaced."
+                  : "Runs locally. Nothing is sent anywhere."}
             </p>
           </div>
         </div>

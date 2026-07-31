@@ -10,6 +10,7 @@ import type { ActionOutcome } from "@/components/shared/action-feedback-button";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { StaggerGroup, StaggerItem } from "@/components/shared/stagger";
 import { Button } from "@/components/ui/button";
+import { BriefPanel } from "@/components/workspace/brief-panel";
 import { MoodboardPanel } from "@/components/workspace/moodboard-panel";
 import { PromptPanel } from "@/components/workspace/prompt-panel";
 import { RationalePanel } from "@/components/workspace/rationale-panel";
@@ -340,6 +341,11 @@ export function ResultsWorkspace({
         hasUnsavedEdits={hasUnsavedEdits}
         mode={source.kind}
         projectTitle={project?.title}
+        editBriefHref={
+          source.kind === "project"
+            ? `/create?edit=project&id=${encodeURIComponent(source.id)}`
+            : "/create?edit=draft"
+        }
         onPrimarySave={handlePrimarySave}
         onSaveAsProject={handleSaveAsProject}
         onRenameProject={handleRenameProject}
@@ -365,6 +371,9 @@ export function ResultsWorkspace({
 
       <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,0.85fr)] xl:gap-10">
         <div className="space-y-8">
+          {/* Read-only echo of the inputs, collapsed by default. */}
+          <BriefPanel brief={output.brief} />
+
           <RationalePanel output={output} />
 
           <StoryboardTimeline

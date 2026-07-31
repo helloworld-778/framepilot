@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FolderOpen, Pencil, RotateCcw, Save } from "lucide-react";
+import { Download, FolderOpen, Pencil, PenLine, RotateCcw, Save } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -18,6 +18,8 @@ interface WorkspaceActionBarProps {
   hasUnsavedEdits: boolean;
   mode: "draft" | "project";
   projectTitle?: string;
+  /** `/create` in edit mode for whichever source this workspace is showing. */
+  editBriefHref: string;
   onPrimarySave: () => ActionOutcome;
   onSaveAsProject: () => ActionOutcome;
   onRenameProject: (title: string) => ActionOutcome;
@@ -30,6 +32,7 @@ export function WorkspaceActionBar({
   hasUnsavedEdits,
   mode,
   projectTitle,
+  editBriefHref,
   onPrimarySave,
   onSaveAsProject,
   onRenameProject,
@@ -41,6 +44,13 @@ export function WorkspaceActionBar({
   return (
     <div className="sticky top-16 z-30 -mx-5 border-b border-hairline bg-canvas/92 px-5 py-3 shadow-[0_12px_30px_-28px_rgb(0_0_0/0.9)] backdrop-blur-[6px] sm:-mx-8 sm:px-8">
       <div className="flex flex-wrap items-center gap-2">
+        <Button asChild variant="outline" size="sm">
+          <Link href={editBriefHref}>
+            <PenLine aria-hidden className="size-3.5" />
+            Edit brief
+          </Link>
+        </Button>
+
         <CopyButton value={output.masterPrompt} label="Copy prompt" />
         <CopyButton value={output.negativePrompt} label="Copy negative prompt" />
 
