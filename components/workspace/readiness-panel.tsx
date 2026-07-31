@@ -1,7 +1,7 @@
 "use client";
 
 import { animate, motion, useMotionValue, useTransform } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 
 import { StatusPill } from "@/components/shared/status-pill";
 import { readinessBandFor } from "@/lib/constants";
@@ -26,6 +26,7 @@ const TONE_COLOUR: Record<ReadinessBand["tone"], string> = {
 function ScoreDial({ score, band }: { score: number; band: ReadinessBand }) {
   const reducedMotion = usePrefersReducedMotion();
   const colour = TONE_COLOUR[band.tone];
+  const explanationId = useId();
 
   const value = useMotionValue(score);
   const rounded = useTransform(value, (current) => Math.round(current));
@@ -48,6 +49,8 @@ function ScoreDial({ score, band }: { score: number; band: ReadinessBand }) {
       <motion.div
         role="img"
         aria-label={`Production readiness ${score} out of 100. ${band.label}.`}
+        // Ties the score to the sentence that says what it does and does not mean.
+        aria-describedby={explanationId}
         className="relative grid size-24 shrink-0 place-items-center rounded-full"
         style={{
           background: ring,
@@ -78,8 +81,10 @@ function ScoreDial({ score, band }: { score: number; band: ReadinessBand }) {
         <p className="text-sm font-medium" style={{ color: colour }}>
           {band.label}
         </p>
-        <p className="mt-1 text-xs leading-snug text-ink-muted">
-          Scored across eight production checks before handoff.
+        {/* Always visible: no tooltip, no disclosure, no hover. */}
+        <p id={explanationId} className="mt-1 text-xs leading-snug text-balance text-ink-muted">
+          This scores how ready the brief and plan are to hand to a generator — not the quality
+          of the finished video.
         </p>
       </div>
     </div>

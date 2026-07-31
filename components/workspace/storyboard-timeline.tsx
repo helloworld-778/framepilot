@@ -96,6 +96,11 @@ export function StoryboardTimeline({
         </p>
       </div>
 
+      {/* Sits with the durations it explains; no tooltip, no hover. */}
+      <p className="mt-1.5 text-[0.68rem] leading-snug text-ink-muted">
+        Shot timings are set by the selected runtime so the storyboard adds up exactly.
+      </p>
+
       <div aria-hidden className="fp-perf mt-3 h-1.5 opacity-60" />
 
       <div

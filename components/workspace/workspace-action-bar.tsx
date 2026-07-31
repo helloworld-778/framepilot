@@ -43,6 +43,15 @@ export function WorkspaceActionBar({
 
   return (
     <div className="sticky top-16 z-30 -mx-5 border-b border-hairline bg-canvas/92 px-5 py-3 shadow-[0_12px_30px_-28px_rgb(0_0_0/0.9)] backdrop-blur-[6px] sm:-mx-8 sm:px-8">
+      {/*
+        Stated before the save controls, so the choice between keeping one
+        working draft and making a separate local copy is clear up front.
+      */}
+      <div className="mb-2 flex flex-wrap gap-x-5 gap-y-0.5 text-[0.68rem] leading-snug text-ink-muted">
+        <p>Working draft: one scene you can keep refining in this browser.</p>
+        <p>Saved projects: separate local copies you can reopen later.</p>
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <Button asChild variant="outline" size="sm">
           <Link href={editBriefHref}>
