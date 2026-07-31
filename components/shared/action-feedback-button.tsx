@@ -2,7 +2,7 @@
 
 import { Check, Loader2, TriangleAlert } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,8 @@ export interface ActionFeedbackButtonProps {
   resetAfterMs?: number;
   disabled?: boolean;
   onSettled?: (outcome: ActionOutcome) => void;
+  /** Lets callers restore focus to this control, e.g. after closing a dialog. */
+  ref?: Ref<HTMLButtonElement>;
 }
 
 const DEFAULT_RESET_MS = 2200;
@@ -65,6 +67,7 @@ export function ActionFeedbackButton({
   resetAfterMs = DEFAULT_RESET_MS,
   disabled,
   onSettled,
+  ref,
 }: ActionFeedbackButtonProps) {
   const [internalState, setInternalState] = useState<ActionState>("idle");
   const [failureMessage, setFailureMessage] = useState<string | null>(null);
@@ -142,6 +145,7 @@ export function ActionFeedbackButton({
 
   return (
     <Button
+      ref={ref}
       type={type}
       variant={variant}
       size={size}

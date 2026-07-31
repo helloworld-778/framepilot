@@ -1,8 +1,10 @@
 import { STORAGE_KEYS } from "@/lib/constants";
+import { saveProject, type SaveProjectResult } from "@/lib/project-store";
 import { draftEnvelopeSchema } from "@/lib/schemas";
 import {
   clearDraft,
   clearDraftAndProjects,
+  readDraft,
   writeDraft,
   type WriteResult,
 } from "@/lib/storage";
@@ -65,6 +67,32 @@ export function saveDraft(
 export function discardDraft(): void {
   clearDraft();
   notifyStorageChanged();
+}
+
+export type ArchiveDraftResult =
+  | SaveProjectResult
+  | { status: "failed"; reason: "missing" };
+
+/**
+ * Saves whatever is *currently stored* in the draft slot as a saved project.
+ *
+ * Nothing is regenerated: the stored envelope already holds the brief and the
+ * generated `DirectorOutput`, including any local shot edits that were saved
+ * with it, so both are written through verbatim. The project's own
+ * `createdAt`/`updatedAt` record when it became a project; the plan's own
+ * provenance (`meta.seed`, `meta.createdAt`) travels inside the payload.
+ *
+ * Returns `missing` when there is no readable draft — a corrupt draft is left to
+ * the existing quarantine path rather than being archived.
+ */
+export function saveStoredDraftAsProject(now: string): ArchiveDraftResult {
+  const stored = readDraft();
+  if (stored.status !== "ok") {
+    return { status: "failed", reason: "missing" };
+  }
+
+  const { brief, output } = stored.value;
+  return saveProject(brief, output, now, { title: output.projectTitle });
 }
 
 /** Reset Demo: clears the draft and saved projects, keeping preferences. */

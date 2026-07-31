@@ -22,8 +22,10 @@ import {
   type OptionCard,
 } from "@/components/scene-form/option-card-group";
 import { ProgressRail } from "@/components/scene-form/progress-rail";
+import { ReplaceDraftDialog } from "@/components/scene-form/replace-draft-dialog";
 import {
   ActionFeedbackButton,
+  type ActionOutcome,
   type ActionState,
 } from "@/components/shared/action-feedback-button";
 import { MagneticCta } from "@/components/shared/magnetic-cta";
@@ -49,8 +51,14 @@ import {
 } from "@/lib/constants";
 import { generateDirection } from "@/lib/director";
 import { directionAttr, directoryTheme } from "@/lib/directory-theme";
+import { saveStoredDraftAsProject } from "@/lib/draft-store";
 import { sceneFormSchema } from "@/lib/schemas";
-import { readPreferences, writeDraft, writePreferences } from "@/lib/storage";
+import {
+  readDraft,
+  readPreferences,
+  writeDraft,
+  writePreferences,
+} from "@/lib/storage";
 import type {
   AspectRatio,
   DirectoryId,
@@ -124,7 +132,10 @@ export function SceneBriefForm() {
   // it is derived rather than synchronised in an effect.
   const [clickedDemo, setClickedDemo] = useState<string | undefined>(undefined);
   const [submitState, setSubmitState] = useState<ActionState>("idle");
+  /** Holds the validated brief while the replace-draft guard is open. */
+  const [pendingBrief, setPendingBrief] = useState<SceneBrief | null>(null);
   const appliedParams = useRef(false);
+  const submitRef = useRef<HTMLButtonElement | null>(null);
   const activeDemo = clickedDemo ?? searchParams.get("demo") ?? undefined;
 
   const form = useForm<SceneBrief>({
@@ -177,7 +188,8 @@ export function SceneBriefForm() {
     toast.success(`Loaded the ${demo.label.toLowerCase()} brief.`);
   }
 
-  function onSubmit(brief: SceneBrief) {
+  /** Generates, stores, and opens the workspace. The only writer of the draft. */
+  function commitBrief(brief: SceneBrief) {
     setSubmitState("working");
     try {
       const output = generateDirection(brief, { now: new Date().toISOString() });
@@ -206,6 +218,59 @@ export function SceneBriefForm() {
       setSubmitState("error");
       toast.error("Something went wrong while directing this scene.");
     }
+  }
+
+  /**
+   * Checked at submission time rather than on render, because the draft slot can
+   * change during a session (another tab, a reset, a save). Only a readable
+   * draft counts: a corrupt one stays with the existing quarantine path.
+   */
+  function onSubmit(brief: SceneBrief) {
+    if (readDraft().status === "ok") {
+      setPendingBrief(brief);
+      return;
+    }
+    commitBrief(brief);
+  }
+
+  function handleCancelReplace() {
+    // No write, no delete, no navigation: the stored draft and every typed value
+    // stay exactly as they were. Focus is restored by the dialog's close handler.
+    setPendingBrief(null);
+    setSubmitState("idle");
+  }
+
+  function handleReplaceDraft() {
+    const brief = pendingBrief;
+    setPendingBrief(null);
+    if (brief) {
+      commitBrief(brief);
+    }
+  }
+
+  async function handleSaveDraftFirst(): Promise<ActionOutcome> {
+    const brief = pendingBrief;
+    if (!brief) {
+      return { ok: false, message: "Nothing to replace" };
+    }
+
+    const archived = saveStoredDraftAsProject(new Date().toISOString());
+    if (archived.status !== "ok") {
+      const message =
+        archived.reason === "quota"
+          ? "Browser storage is full. Delete an older project and try again."
+          : archived.reason === "missing"
+            ? "The current draft could not be read, so it was not saved."
+            : "The current draft could not be saved.";
+      toast.error(message);
+      // The dialog stays open and the draft is untouched, so the user can retry.
+      return { ok: false, message: "Could not save the current draft" };
+    }
+
+    toast.success("Current draft saved locally");
+    setPendingBrief(null);
+    commitBrief(brief);
+    return { ok: true };
   }
 
   const descriptionValue = values.description ?? "";
@@ -391,6 +456,7 @@ export function SceneBriefForm() {
           <div className="fp-panel fp-panel-tinted flex flex-wrap items-center gap-3 p-5">
             <MagneticCta>
               <ActionFeedbackButton
+                ref={submitRef}
                 type="submit"
                 idleLabel="Direct my scene"
                 workingLabel="Directing…"
@@ -410,6 +476,14 @@ export function SceneBriefForm() {
 
         <LiveMoodboard brief={values} />
       </form>
+
+      <ReplaceDraftDialog
+        open={pendingBrief !== null}
+        restoreFocusTo={submitRef}
+        onCancel={handleCancelReplace}
+        onReplace={handleReplaceDraft}
+        onSaveFirst={handleSaveDraftFirst}
+      />
     </div>
   );
 }
