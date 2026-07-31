@@ -104,7 +104,7 @@ describe("DemoWorkspaceMenu", () => {
     expect(screen.getByText("1 saved project")).toBeInTheDocument();
   });
 
-  it("links to the two existing routes", async () => {
+  it("links to the existing routes", async () => {
     render(<DemoWorkspaceMenu />);
     await openMenu();
 
@@ -116,6 +116,52 @@ describe("DemoWorkspaceMenu", () => {
       "href",
       "/create",
     );
+  });
+
+  describe("creative directions access", () => {
+    it("offers a real navigational link to the directions reference", async () => {
+      render(<DemoWorkspaceMenu />);
+      await openMenu();
+
+      const item = screen.getByRole("menuitem", { name: "Creative directions" });
+      expect(item.tagName).toBe("A");
+      expect(item).toHaveAttribute("href", "/directories");
+      expect(item).toHaveAccessibleName("Creative directions");
+    });
+
+    it("sits with the navigation items, before the destructive reset", async () => {
+      render(<DemoWorkspaceMenu />);
+      await openMenu();
+
+      const labels = screen
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent?.trim() ?? "");
+      expect(labels).toEqual([
+        "Open projects",
+        "Create a scene",
+        "Creative directions",
+        "Reset demo data",
+      ]);
+    });
+
+    it("is present regardless of viewport, with no responsive hiding", async () => {
+      render(<DemoWorkspaceMenu />);
+      const { trigger } = await openMenu();
+
+      const item = screen.getByRole("menuitem", { name: "Creative directions" });
+      // The trigger is always rendered, and this item carries no breakpoint gate.
+      expect(item.className).not.toMatch(/\bhidden\b/);
+      expect(item.closest("[hidden]")).toBeNull();
+      expect(trigger.className).not.toMatch(/\bhidden\b/);
+    });
+
+    it("is reachable and activatable by keyboard", async () => {
+      render(<DemoWorkspaceMenu />);
+      const { user } = await openMenu();
+
+      await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+      expect(screen.getByRole("menuitem", { name: "Creative directions" })).toHaveFocus();
+    });
   });
 
   it("closes on Escape and restores focus to its trigger", async () => {

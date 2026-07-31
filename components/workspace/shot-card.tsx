@@ -16,7 +16,7 @@ import {
   Volume2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { DirectionCanvas } from "@/components/shared/direction-canvas";
@@ -103,16 +103,57 @@ export function ShotCard({ shot, isActive, onSave, onRevert, onFocus }: ShotCard
     defaultValues: toEditValues(shot),
   });
 
+  /**
+   * Focus management for the edit swap.
+   *
+   * Opening removes the Edit trigger and closing removes the form controls, so
+   * without this the browser drops focus to <body>. The intent is parked on a ref
+   * and acted on in a layout effect once the replacement element is actually in
+   * the DOM — no timers, no state added purely to drive an effect, and no
+   * dependency on animation finishing.
+   *
+   * Refs are per-card, so nothing is queried globally and shot cards cannot
+   * collide with each other.
+   */
+  const editTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const titleFieldRef = useRef<HTMLInputElement | null>(null);
+  const pendingFocus = useRef<"first-field" | "edit-trigger" | null>(null);
+
+  useLayoutEffect(() => {
+    const target = pendingFocus.current;
+    if (target === null) {
+      return;
+    }
+    pendingFocus.current = null;
+    if (target === "first-field") {
+      titleFieldRef.current?.focus();
+      return;
+    }
+    editTriggerRef.current?.focus();
+  });
+
   function startEditing() {
     form.reset(toEditValues(shot));
+    pendingFocus.current = "first-field";
     setIsEditing(true);
     onFocus(shot.id);
   }
 
-  function submit(values: ShotEdit) {
-    onSave(shot.id, values);
+  function cancelEditing() {
+    pendingFocus.current = "edit-trigger";
     setIsEditing(false);
   }
+
+  /** Only reached for a valid submission, so an invalid one keeps focus inside. */
+  function submit(values: ShotEdit) {
+    onSave(shot.id, values);
+    pendingFocus.current = "edit-trigger";
+    setIsEditing(false);
+  }
+
+  // RHF owns the field ref, so both registrations are composed rather than
+  // overwritten.
+  const titleField = form.register("title");
 
   const inputClass =
     "border-hairline-strong bg-canvas-deep/70 text-sm transition-[border-color,box-shadow] focus-visible:border-dir/60 focus-visible:ring-[3px] focus-visible:ring-dir/25";
@@ -192,6 +233,7 @@ export function ShotCard({ shot, isActive, onSave, onRevert, onFocus }: ShotCard
               ) : null}
               {isEditing ? null : (
                 <Button
+                  ref={editTriggerRef}
                   type="button"
                   size="sm"
                   variant="outline"
@@ -213,7 +255,11 @@ export function ShotCard({ shot, isActive, onSave, onRevert, onFocus }: ShotCard
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18 }}
-                onSubmit={form.handleSubmit(submit)}
+                // Wrapped so the submit path is built inside the event, keeping
+                // the focus-intent ref out of render.
+                onSubmit={(event) => {
+                  void form.handleSubmit(submit)(event);
+                }}
                 noValidate
                 className="space-y-4 bg-canvas-deep/40 px-5 py-5"
               >
@@ -228,7 +274,11 @@ export function ShotCard({ shot, isActive, onSave, onRevert, onFocus }: ShotCard
                     <Input
                       id={`title-${shot.id}`}
                       className={inputClass}
-                      {...form.register("title")}
+                      {...titleField}
+                      ref={(node) => {
+                        titleField.ref(node);
+                        titleFieldRef.current = node;
+                      }}
                     />
                   </EditField>
                   <EditField
@@ -279,12 +329,7 @@ export function ShotCard({ shot, isActive, onSave, onRevert, onFocus }: ShotCard
                     <Check aria-hidden className="size-3.5" />
                     Save shot
                   </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setIsEditing(false)}
-                  >
+                  <Button type="button" size="sm" variant="ghost" onClick={cancelEditing}>
                     <X aria-hidden className="size-3.5" />
                     Cancel
                   </Button>

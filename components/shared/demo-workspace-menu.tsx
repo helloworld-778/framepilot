@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, FolderOpen, HardDrive, RotateCcw } from "lucide-react";
+import { ArrowRight, Compass, FolderOpen, HardDrive, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
@@ -95,6 +95,11 @@ export function DemoWorkspaceMenu() {
 
           <DropdownMenuSeparator />
 
+          {/*
+            Navigational group. The trigger is visible at every width, so these
+            are the reliable route to each page on a phone — including the
+            directions reference, whose header link only appears from `sm`.
+          */}
           <DropdownMenuGroup>
             <DropdownMenuItem asChild>
               <Link href="/projects">
@@ -106,6 +111,12 @@ export function DemoWorkspaceMenu() {
               <Link href="/create">
                 <ArrowRight aria-hidden />
                 Create a scene
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/directories">
+                <Compass aria-hidden />
+                Creative directions
               </Link>
             </DropdownMenuItem>
           </DropdownMenuGroup>
