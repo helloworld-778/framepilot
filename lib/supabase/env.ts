@@ -17,10 +17,18 @@
 
 /** Env var names, written out so Next.js can inline them at build time. */
 export const SUPABASE_URL_VAR = "NEXT_PUBLIC_SUPABASE_URL";
+/**
+ * Supabase generates this key name by default in every project dashboard.
+ * The @supabase/ssr helpers, supabase/proxy.ts, and .env.local all use it.
+ * NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is the earlier Phase 1 alias; both are
+ * accepted so existing code keeps working during migration.
+ */
+export const SUPABASE_ANON_KEY_VAR = "NEXT_PUBLIC_SUPABASE_ANON_KEY";
 export const SUPABASE_PUBLISHABLE_KEY_VAR = "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY";
 
 export interface SupabasePublicConfig {
   url: string;
+  /** The resolved anon/publishable key, regardless of which var name it came from. */
   publishableKey: string;
 }
 
@@ -45,20 +53,28 @@ function readVar(value: string | undefined): string | null {
 /**
  * Resolves the public Supabase configuration without throwing.
  *
+ * Accepts NEXT_PUBLIC_SUPABASE_ANON_KEY (the real Supabase default, used by
+ * @supabase/ssr and .env.local) or the earlier NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ * alias. The anon key takes precedence when both are set.
+ *
  * Note the literal `process.env.NEXT_PUBLIC_…` member expressions: Next.js
  * replaces these statically at build time, so dynamic lookup would silently
  * yield undefined in the browser bundle.
  */
 export function getSupabasePublicConfig(): SupabaseConfigResult {
   const url = readVar(process.env.NEXT_PUBLIC_SUPABASE_URL);
-  const publishableKey = readVar(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+  // Prefer the real Supabase key name; fall back to the Phase 1 alias.
+  const publishableKey =
+    readVar(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ??
+    readVar(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
 
   const missing: string[] = [];
   if (url === null) {
     missing.push(SUPABASE_URL_VAR);
   }
   if (publishableKey === null) {
-    missing.push(SUPABASE_PUBLISHABLE_KEY_VAR);
+    // Report both accepted names so the developer knows either one works.
+    missing.push(`${SUPABASE_ANON_KEY_VAR} (or ${SUPABASE_PUBLISHABLE_KEY_VAR})`);
   }
 
   if (url === null || publishableKey === null) {

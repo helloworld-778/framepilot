@@ -20,12 +20,13 @@ const FAKE_KEY = "sb_publishable_not-a-real-key";
 
 function clearSupabaseEnv(): void {
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 }
 
 function configure(): void {
   process.env.NEXT_PUBLIC_SUPABASE_URL = FAKE_URL;
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = FAKE_KEY;
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = FAKE_KEY;
 }
 
 describe("supabase client factories", () => {
