@@ -40,7 +40,7 @@ export default async function SignInPage({
                     </p>
                 ) : null}
 
-                <form className="mt-6 space-y-5">
+                <form action={signUp} className="mt-6 space-y-5">
                     <div className="space-y-2">
                         <label htmlFor="email" className="text-sm font-medium text-white">
                             Email
@@ -76,6 +76,7 @@ export default async function SignInPage({
 
                     <div className="grid gap-3 sm:grid-cols-2">
                         <button
+                            type="submit"
                             formAction={signIn}
                             className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-white/90"
                         >
@@ -83,9 +84,10 @@ export default async function SignInPage({
                         </button>
 
                         <button
-                            formAction={signUp}
+                            type="submit"
                             className="rounded-lg border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
                         >
+
                             Create account
                         </button>
                     </div>
